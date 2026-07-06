@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SektorLink – Pacijenti i hitne poruke</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#06b6d4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SektorLink">
+
+<style>
+:root {
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --surface2: #f8fafc;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text2: #64748b;
+  --text3: #94a3b8;
+  --primary: #06b6d4;
+  --primary-dark: #0891b2;
+  --primary-light: #ecfeff;
+  --success: #22c55e;
+  --success-light: #f0fdf4;
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --danger: #ef4444;
+  --danger-light: #fef2f2;
+  --purple: #8b5cf6;
+  --purple-light: #f5f3ff;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+  --transition: .2s ease;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #060a14;
+  --surface: #0e1626;
+  --surface2: #0a1120;
+  --border: rgba(255,255,255,.09);
+  --text: #e8eef7;
+  --text2: #94a3b8;
+  --text3: #56637a;
+  --primary-light: rgba(34,211,238,.14);
+  --success-light: rgba(34,197,94,.14);
+  --warning-light: rgba(245,158,11,.14);
+  --danger-light: rgba(239,68,68,.14);
+  --purple-light: rgba(139,92,246,.14);
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.3);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,.55);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+.hidden { display: none !important; }
+button { font: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; }
+a { color: var(--primary); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+/* ---------- Buttons ---------- */
+.btn, .btn-ghost, .btn-danger, .btn-primary, .btn-success {
+  display: inline-flex; align-items: center; gap: .35rem;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: var(--radius-sm); padding: .5rem .9rem; font-size: .9rem;
+  transition: var(--transition); white-space: nowrap;
+}
+.btn:hover, .btn-ghost:hover { background: var(--surface2); }
+.btn-sm { padding: .35rem .6rem; font-size: .82rem; }
+.btn-lg { padding: .75rem 1.5rem; font-size: 1.05rem; }
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-success { background: var(--success); border-color: var(--success); color: #fff; }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn-danger:hover { filter: brightness(.92); }
+.btn-icon { padding: .4rem .55rem; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- Role picker screen ---------- */
+.role-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(6,182,212,.25), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(139,92,246,.22), transparent 45%),
+    #060a14;
+}
+.role-card {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+  backdrop-filter: blur(16px); border-radius: 20px; padding: 2.5rem 2rem;
+  max-width: 440px; width: 100%; text-align: center; color: #e8eef7;
+  box-shadow: var(--shadow-lg); position: relative;
+}
+.role-card h1 { font-size: 1.7rem; margin-bottom: .35rem; }
+.role-card p { color: #94a3b8; margin-bottom: 1.5rem; font-size: .92rem; }
+.role-buttons { display: flex; flex-direction: column; gap: .6rem; }
+.role-btn {
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+  color: #e8eef7; border-radius: var(--radius); padding: .85rem 1rem;
+  font-size: 1rem; transition: var(--transition); text-align: left;
+  display: flex; align-items: center; gap: .6rem;
+}
+.role-btn:hover { background: rgba(6,182,212,.18); border-color: var(--primary); }
+.role-btn.admin { border-color: var(--purple); }
+.role-btn.admin:hover { background: rgba(139,92,246,.18); }
+.role-hint { color: #56637a; font-size: .85rem; margin-top: 1rem; }
+.theme-toggle-role { position: absolute; top: 1rem; right: 1rem; }
+
+/* ---------- App shell ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 20; background: var(--surface);
+  border-bottom: 1px solid var(--border); padding: .7rem 1.2rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  flex-wrap: wrap;
+}
+.topbar-left { display: flex; align-items: center; gap: .7rem; }
+.brand { font-weight: 700; font-size: 1.05rem; }
+.role-label {
+  font-size: .8rem; color: var(--text2); background: var(--surface2);
+  border: 1px solid var(--border); padding: .2rem .6rem; border-radius: 99px;
+}
+.topbar-right { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.conn-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: .2rem; }
+.conn-dot.online { background: var(--success); box-shadow: 0 0 0 3px var(--success-light); }
+.conn-dot.offline { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-light); }
+.conn-dot.local { background: var(--text3); }
+
+.container { max-width: 960px; margin: 0 auto; padding: 1.2rem 1rem 5rem; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 1.1rem; margin-bottom: 1rem;
+}
+.card h2 { font-size: 1.05rem; margin-bottom: .8rem; }
+.card h3 { font-size: .95rem; margin-bottom: .6rem; color: var(--text2); }
+
+.field { margin-bottom: .75rem; }
+.field label { display: block; font-size: .82rem; color: var(--text2); margin-bottom: .3rem; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface2); color: var(--text);
+}
+.field textarea { resize: vertical; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+@media (max-width: 560px) { .form-row { grid-template-columns: 1fr; } }
+
+.tabs { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.tab-btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text2);
+  border-radius: 99px; padding: .45rem 1rem; font-size: .85rem; position: relative;
+}
+.tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.tab-count {
+  display: inline-block; min-width: 1.2rem; text-align: center; margin-left: .3rem;
+  background: rgba(0,0,0,.12); border-radius: 99px; padding: 0 .35rem; font-size: .75rem;
+}
+.tab-btn.active .tab-count { background: rgba(255,255,255,.25); }
+
+.list-empty { color: var(--text3); font-size: .88rem; padding: 1.2rem 0; text-align: center; }
+
+.row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .7rem .85rem;
+  margin-bottom: .5rem; background: var(--surface2);
+}
+.row-main { min-width: 0; }
+.row-title { font-weight: 600; font-size: .95rem; }
+.row-sub { font-size: .8rem; color: var(--text2); margin-top: .15rem; }
+.row-note { font-size: .8rem; color: var(--text2); margin-top: .25rem; font-style: italic; }
+.row-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+.badge { display: inline-block; padding: .12rem .5rem; border-radius: 99px; font-size: .72rem; font-weight: 600; }
+.badge-warning { background: var(--warning-light); color: var(--warning); }
+.badge-success { background: var(--success-light); color: var(--success); }
+.badge-purple { background: var(--purple-light); color: var(--purple); }
+.badge-danger { background: var(--danger-light); color: var(--danger); }
+
+.sectors-manage-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+.sectors-manage-row input { flex: 1; }
+
+/* ---------- Floating action button + panel ---------- */
+.fab {
+  position: fixed; right: 1.3rem; bottom: 1.3rem; z-index: 30;
+  width: 58px; height: 58px; border-radius: 50%; background: var(--primary); color: #fff;
+  border: none; box-shadow: var(--shadow-lg); display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; transition: var(--transition);
+}
+.fab:hover { background: var(--primary-dark); transform: scale(1.05); }
+.fab-badge {
+  position: absolute; top: -4px; right: -4px; background: var(--danger); color: #fff;
+  border-radius: 99px; min-width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; font-weight: 700; padding: 0 .3rem; border: 2px solid var(--bg);
+}
+
+.side-panel {
+  position: fixed; right: 1.3rem; bottom: 5.3rem; z-index: 30;
+  width: min(380px, calc(100vw - 2.6rem)); max-height: min(70vh, 560px);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden;
+}
+.panel-header { display: flex; align-items: center; justify-content: space-between; padding: .5rem .5rem .5rem .9rem; border-bottom: 1px solid var(--border); }
+.panel-tabs { display: flex; gap: .3rem; }
+.panel-tab { border: 1px solid var(--border); background: var(--surface2); color: var(--text2); border-radius: 99px; padding: .3rem .8rem; font-size: .8rem; }
+.panel-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.panel-body { padding: .8rem; overflow-y: auto; }
+
+/* ---------- Modals ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 50; background: rgba(6,10,20,.55);
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.modal-card {
+  background: var(--surface); border-radius: var(--radius); padding: 1.3rem; width: 100%;
+  max-width: 440px; box-shadow: var(--shadow-lg);
+}
+.modal-card h3 { margin-bottom: 1rem; }
+.modal-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: .8rem; }
+
+.urgent-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: radial-gradient(circle at 50% 30%, rgba(239,68,68,.35), rgba(6,10,20,.92));
+  display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  animation: urgent-pulse 1.4s ease-in-out infinite;
+}
+@keyframes urgent-pulse {
+  0%, 100% { background-color: rgba(6,10,20,.92); }
+  50% { background-color: rgba(40,6,6,.92); }
+}
+.urgent-card {
+  background: var(--surface); border-radius: 20px; padding: 2.2rem 1.8rem; max-width: 480px; width: 100%;
+  text-align: center; box-shadow: var(--shadow-lg); border: 2px solid var(--danger);
+}
+.urgent-icon { font-size: 2.6rem; margin-bottom: .5rem; }
+.urgent-from { font-size: .85rem; color: var(--text2); margin-bottom: .5rem; }
+.urgent-text { font-size: 1.15rem; font-weight: 600; margin-bottom: 1.4rem; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+
+<div id="role-screen" class="role-screen">
+  <div class="role-card">
+    <button id="theme-toggle-role" class="btn-ghost btn-icon theme-toggle-role">🌙</button>
+    <h1>🧪 SektorLink</h1>
+    <p>Izaberite ko ste na ovom računaru</p>
+    <div id="role-buttons" class="role-buttons"></div>
+  </div>
+</div>
+
+<div id="app-screen" class="hidden">
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand">🧪 SektorLink</span>
+      <span id="role-label" class="role-label"></span>
+    </div>
+    <div class="topbar-right">
+      <span id="conn-dot" class="conn-dot"></span>
+      <button id="urgent-btn" class="btn-danger btn-sm">📢 Hitna poruka</button>
+      <button id="settings-btn" class="btn-ghost btn-sm btn-icon hidden" title="Sektori">⚙️</button>
+      <button id="theme-toggle" class="btn-ghost btn-sm btn-icon">🌙</button>
+      <button id="change-role-btn" class="btn-ghost btn-sm">Promeni ulogu</button>
+    </div>
+  </header>
+  <main id="main-content" class="container"></main>
+</div>
+
+<button id="fab" class="fab hidden" title="Lista">
+  📋<span id="fab-badge" class="fab-badge hidden">0</span>
+</button>
+
+<div id="side-panel" class="side-panel hidden">
+  <div class="panel-header">
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-tab="list">Lista</button>
+      <button class="panel-tab" data-tab="messages">Poruke</button>
+    </div>
+    <button id="panel-close" class="btn-ghost btn-icon btn-sm">✕</button>
+  </div>
+  <div id="panel-body" class="panel-body"></div>
+</div>
+
+<div id="sectors-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>⚙️ Upravljanje sektorima</h3>
+    <div id="sectors-list"></div>
+    <div class="sectors-manage-row">
+      <input id="new-sector-name" placeholder="Naziv novog sektora...">
+      <button id="add-sector-btn" class="btn-primary btn-sm">Dodaj</button>
+    </div>
+    <div class="modal-actions">
+      <button id="sectors-modal-close" class="btn-ghost">Zatvori</button>
+    </div>
+  </div>
+</div>
+
+<div id="compose-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>📢 Hitna poruka</h3>
+    <div class="field">
+      <label>Prima:</label>
+      <select id="compose-to"></select>
+    </div>
+    <div class="field">
+      <label>Poruka:</label>
+      <textarea id="compose-text" rows="4" placeholder="Unesite hitnu poruku..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button id="compose-cancel" class="btn-ghost">Otkaži</button>
+      <button id="compose-send" class="btn-danger">Pošalji hitno</button>
+    </div>
+  </div>
+</div>
+
+<div id="urgent-overlay" class="urgent-overlay hidden">
+  <div class="urgent-card">
+    <div class="urgent-icon">🚨</div>
+    <div id="urgent-from" class="urgent-from"></div>
+    <div id="urgent-text" class="urgent-text"></div>
+    <button id="urgent-ok" class="btn-danger btn-lg">U redu</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     FIREBASE SDK (compat build). Safe to load even before
+     FIREBASE_CONFIG is filled in — everything stays inert until then.
+     ============================================================ -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+
+<script>
+/* ================================================================
+   FIREBASE CONFIG — zameni ovim placeholder vrednostima svoj pravi
+   config iz Firebase Console (Project settings → Your apps → Web).
+   Dok su ovo placeholder vrednosti, app radi u čisto lokalnom
+   (localStorage + cross-tab) režimu — pogledaj README.md.
+   ================================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.firebasestorage.app",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const FIREBASE_ENABLED = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
+let firebaseDB = null;
+let firebaseAuth = null;
+if (FIREBASE_ENABLED) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  firebaseDB = firebase.database();
+  firebaseAuth = firebase.auth();
+}
+
+/* ================================================================
+   STATE
+   ================================================================ */
+let sectors = {};   // { id: { id, name, order } }
+let patients = {};  // { id: { id, patientNumber, patientName, sectorId, direction, reason, note, status, createdAt, updatedAt, createdBy } }
+let messages = {};  // { id: { id, text, from, to, ts } }
+let myRole = null;  // { type: 'admin' } | { type: 'sector', sectorId }
+
+let adminTab = 'new';
+let panelTab = 'list';
+let panelOpen = false;
+
+const tabLoadTs = Date.now();
+const alertedMessageIds = new Set();
+let urgentQueue = [];
+let urgentShowing = false;
+
+function $(sel) { return document.querySelector(sel); }
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function formatTime(ts) {
+  return new Date(ts).toLocaleString('sr-RS', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function reasonLabel(r) {
+  if (r === 'ponavljanje') return 'Ponavljanje';
+  if (r === 'nije-uradjeno') return 'Nije urađeno';
+  if (r === 'spreman-za-pregled') return 'Spreman za pregled';
+  return r || '';
+}
+
+function sectorName(id) {
+  return (sectors[id] && sectors[id].name) || 'Nepoznat sektor';
+}
+
+/* ================================================================
+   LOCAL STORAGE (fallback when Firebase isn't configured, and as a
+   warm-start cache before the first cloud snapshot arrives)
+   ================================================================ */
+function loadLocalState() {
+  sectors = JSON.parse(localStorage.getItem('sf_sectors') || '{}');
+  patients = JSON.parse(localStorage.getItem('sf_patients') || '{}');
+  messages = JSON.parse(localStorage.getItem('sf_messages') || '{}');
+  if (!FIREBASE_ENABLED && !Object.keys(sectors).length) seedSectors();
+}
+
+function saveLocalSectors() { localStorage.setItem('sf_sectors', JSON.stringify(sectors)); }
+function saveLocalPatients() { localStorage.setItem('sf_patients', JSON.stringify(patients)); }
+function saveLocalMessages() { localStorage.setItem('sf_messages', JSON.stringify(messages)); }
+
+function seedSectors() {
+  ['Sektor 1', 'Sektor 2', 'Sektor 3'].forEach((name, i) => {
+    const id = uid();
+    sectors[id] = { id, name, order: i };
+  });
+  saveLocalSectors();
+}
+
+function handleStorageEvent(e) {
+  if (['sf_sectors', 'sf_patients', 'sf_messages'].includes(e.key)) {
+    loadLocalState();
+    render();
+  }
+}
+
+/* ================================================================
+   CLOUD (per-record writes — never overwrite the whole collection,
+   so two computers editing at the same time can't clobber each other)
+   ================================================================ */
+function cloudSet(path, id, data) {
+  if (firebaseDB) firebaseDB.ref(path + '/' + id).set(data).catch(console.error);
+}
+function cloudRemove(path, id) {
+  if (firebaseDB) firebaseDB.ref(path + '/' + id).remove().catch(console.error);
+}
+
+function startCloudListeners() {
+  firebaseDB.ref('sectors').on('value', snap => { sectors = snap.val() || {}; saveLocalSectors(); render(); });
+  firebaseDB.ref('patients').on('value', snap => { patients = snap.val() || {}; saveLocalPatients(); render(); });
+  firebaseDB.ref('messages').on('value', snap => { messages = snap.val() || {}; saveLocalMessages(); render(); });
+  firebaseDB.ref('.info/connected').on('value', snap => {
+    const dot = $('#conn-dot');
+    if (!dot) return;
+    if (snap.val() === true) { dot.className = 'conn-dot online'; dot.title = 'Povezano na oblak — uživo sa svim računarima'; }
+    else { dot.className = 'conn-dot offline'; dot.title = 'Nije trenutno povezano na oblak'; }
+  });
+}
+
+/* ================================================================
+   DATA MUTATIONS
+   ================================================================ */
+function setSector(id, data) { sectors[id] = data; saveLocalSectors(); cloudSet('sectors', id, data); render(); }
+function removeSector(id) { delete sectors[id]; saveLocalSectors(); cloudRemove('sectors', id); render(); }
+
+function setPatient(id, data) { patients[id] = data; saveLocalPatients(); cloudSet('patients', id, data); render(); }
+function removePatient(id) { delete patients[id]; saveLocalPatients(); cloudRemove('patients', id); render(); }
+
+function setMessage(id, data) { messages[id] = data; saveLocalMessages(); cloudSet('messages', id, data); }
+
+function addPatientToSector(number, name, sectorId, reason, note) {
+  const id = uid();
+  setPatient(id, {
+    id, patientNumber: number, patientName: name, sectorId, reason, note,
+    direction: 'toSector', status: 'pending',
+    createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin'
+  });
+}
+
+function sendReadyForExam(number, name, note) {
+  const id = uid();
+  setPatient(id, {
+    id, patientNumber: number, patientName: name, sectorId: myRole.sectorId, reason: 'spreman-za-pregled', note,
+    direction: 'toAdmin', status: 'pending',
+    createdAt: Date.now(), updatedAt: Date.now(), createdBy: myRole.sectorId
+  });
+}
+
+function markDone(id) {
+  const p = patients[id]; if (!p) return;
+  setPatient(id, { ...p, status: 'done', updatedAt: Date.now() });
+}
+function closeItem(id) {
+  const p = patients[id]; if (!p) return;
+  setPatient(id, { ...p, status: 'closed', updatedAt: Date.now() });
+}
+function deletePatientRow(id) {
+  if (!confirm('Obrisati ovaj unos?')) return;
+  removePatient(id);
+}
+
+function sendUrgentMessage(text, to) {
+  const id = uid();
+  const from = myRole.type === 'admin' ? 'Administrator' : sectorName(myRole.sectorId);
+  const data = { id, text, from, to, ts: Date.now() };
+  alertedMessageIds.add(id);
+  setMessage(id, data);
+}
+
+/* ================================================================
+   ROLE SELECTION
+   ================================================================ */
+function chooseRole(role) {
+  myRole = role;
+  localStorage.setItem('sf_role', JSON.stringify(role));
+  showAppScreen();
+}
+
+function changeRole() {
+  myRole = null;
+  localStorage.removeItem('sf_role');
+  panelOpen = false;
+  $('#side-panel').classList.add('hidden');
+  $('#app-screen').classList.add('hidden');
+  $('#role-screen').classList.remove('hidden');
+  render();
+}
+
+function showAppScreen() {
+  $('#role-screen').classList.add('hidden');
+  $('#app-screen').classList.remove('hidden');
+  $('#fab').classList.remove('hidden');
+  render();
+}
+
+/* ================================================================
+   RENDER
+   ================================================================ */
+function render() {
+  if (!myRole) { renderRoleScreen(); updateConnDot(); return; }
+  renderTopbar();
+  renderMain();
+  renderFab();
+  if (panelOpen) renderPanelBody();
+  processMessages();
+}
+
+function updateConnDot() {
+  const dot = $('#conn-dot'); if (!dot) return;
+  if (!FIREBASE_ENABLED) { dot.className = 'conn-dot local'; dot.title = 'Lokalni režim (bez Firebase-a)'; }
+}
+
+function renderRoleScreen() {
+  const box = $('#role-buttons');
+  let html = `<button class="role-btn admin" onclick='chooseRole({"type":"admin"})'>👑 Administrator</button>`;
+  const sectorList = Object.values(sectors).sort((a, b) => (a.order || 0) - (b.order || 0));
+  if (sectorList.length) {
+    sectorList.forEach(s => {
+      html += `<button class="role-btn" onclick='chooseRole({"type":"sector","sectorId":"${s.id}"})'>🧪 ${esc(s.name)}</button>`;
+    });
+  } else if (FIREBASE_ENABLED) {
+    html += `<div class="role-hint">Nema još definisanih sektora. Administrator prvo treba da ih doda (⚙️ u aplikaciji).</div>`;
+  }
+  box.innerHTML = html;
+}
+
+function renderTopbar() {
+  $('#role-label').textContent = myRole.type === 'admin' ? 'Administrator' : sectorName(myRole.sectorId);
+  $('#settings-btn').classList.toggle('hidden', myRole.type !== 'admin');
+}
+
+function renderMain() {
+  $('#main-content').innerHTML = myRole.type === 'admin' ? adminMainHtml() : sectorMainHtml();
+  wireMainEvents();
+}
+
+/* ---------- Admin main content ---------- */
+function adminPatients() { return Object.values(patients).filter(p => p.status !== 'closed' || adminTab === 'history'); }
+
+function adminMainHtml() {
+  const sentPending = Object.values(patients).filter(p => p.direction === 'toSector' && p.status === 'pending');
+  const review = Object.values(patients).filter(p => p.direction === 'toSector' && p.status === 'done');
+  const ready = Object.values(patients).filter(p => p.direction === 'toAdmin' && p.status === 'pending');
+  const history = Object.values(patients).filter(p => p.status === 'closed').sort((a, b) => b.updatedAt - a.updatedAt);
+
+  const tabs = [
+    ['new', 'Novi pacijent', null],
+    ['sent', 'Poslato sektorima', sentPending.length],
+    ['review', 'Vraćeno na proveru', review.length],
+    ['ready', 'Spremni za pregled', ready.length],
+    ['history', 'Istorija', null]
+  ];
+
+  const tabsHtml = tabs.map(([key, label, count]) => `
+    <button class="tab-btn ${adminTab === key ? 'active' : ''}" data-admin-tab="${key}">
+      ${label}${count != null ? `<span class="tab-count">${count}</span>` : ''}
+    </button>`).join('');
+
+  let bodyHtml = '';
+  if (adminTab === 'new') bodyHtml = newPatientFormHtml();
+  else if (adminTab === 'sent') bodyHtml = patientListHtml(sentPending, 'sent');
+  else if (adminTab === 'review') bodyHtml = patientListHtml(review, 'review');
+  else if (adminTab === 'ready') bodyHtml = patientListHtml(ready, 'ready');
+  else if (adminTab === 'history') bodyHtml = historyListHtml(history, true);
+
+  return `<div class="tabs">${tabsHtml}</div>${bodyHtml}`;
+}
+
+function newPatientFormHtml() {
+  const sectorOptions = Object.values(sectors).sort((a, b) => (a.order || 0) - (b.order || 0))
+    .map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  return `
+  <div class="card">
+    <h2>Novi pacijent za sektor</h2>
+    <form id="new-patient-form">
+      <div class="form-row">
+        <div class="field"><label>Broj pacijenta</label><input id="np-number" required></div>
+        <div class="field"><label>Ime i prezime</label><input id="np-name" required></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Sektor</label><select id="np-sector" required>${sectorOptions || '<option value="">Nema sektora</option>'}</select></div>
+        <div class="field"><label>Razlog</label>
+          <select id="np-reason">
+            <option value="ponavljanje">Ponavljanje</option>
+            <option value="nije-uradjeno">Nije urađeno</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Napomena (opciono)</label><textarea id="np-note" rows="2"></textarea></div>
+      <button type="submit" class="btn-primary">Pošalji sektoru</button>
+    </form>
+  </div>`;
+}
+
+function patientListHtml(list, ctx) {
+  if (!list.length) return `<div class="card"><div class="list-empty">Nema stavki.</div></div>`;
+  list.sort((a, b) => b.updatedAt - a.updatedAt);
+  return `<div class="card">${list.map(p => patientRowHtml(p, ctx)).join('')}</div>`;
+}
+
+function historyListHtml(list, showSearch) {
+  const searchBox = showSearch ? `<div class="field"><input id="hist-search" placeholder="Pretraga po broju ili imenu..."></div>` : '';
+  const rows = list.length ? list.map(p => patientRowHtml(p, 'history')).join('') : `<div class="list-empty">Nema zatvorenih stavki.</div>`;
+  return `<div class="card">${searchBox}<div id="hist-rows">${rows}</div></div>`;
+}
+
+function patientRowHtml(p, ctx) {
+  const isToSector = p.direction === 'toSector';
+  const typeLabel = isToSector ? `→ ${esc(sectorName(p.sectorId))}` : `${esc(sectorName(p.sectorId))} → Admin`;
+  const badgeClass = p.reason === 'nije-uradjeno' ? 'badge-danger' : (p.reason === 'spreman-za-pregled' ? 'badge-purple' : 'badge-warning');
+  let actions = '';
+  if (ctx === 'sent') {
+    actions = `<button class="btn-ghost btn-sm" onclick="deletePatientRow('${p.id}')" title="Obriši">🗑️</button>`;
+  } else if (ctx === 'sector-queue') {
+    actions = `<button class="btn-success btn-sm" onclick="markDone('${p.id}')">Odrađeno ✓</button>`;
+  } else if (ctx === 'review' || ctx === 'ready') {
+    actions = `<button class="btn-primary btn-sm" onclick="closeItem('${p.id}')">Zatvori</button>`;
+  }
+  return `
+  <div class="row">
+    <div class="row-main">
+      <div class="row-title">${esc(p.patientNumber)} — ${esc(p.patientName)}</div>
+      <div class="row-sub"><span class="badge ${badgeClass}">${reasonLabel(p.reason)}</span> · ${typeLabel} · ${formatTime(p.updatedAt)}</div>
+      ${p.note ? `<div class="row-note">${esc(p.note)}</div>` : ''}
+    </div>
+    <div class="row-actions">${actions}</div>
+  </div>`;
+}
+
+/* ---------- Sector main content ---------- */
+function sectorMainHtml() {
+  const pendingCount = Object.values(patients).filter(p => p.sectorId === myRole.sectorId && p.direction === 'toSector' && p.status === 'pending').length;
+  const history = Object.values(patients)
+    .filter(p => p.sectorId === myRole.sectorId && p.status === 'closed')
+    .sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 30);
+  return `
+  <div class="card">
+    <h2>Pacijenti na čekanju: ${pendingCount}</h2>
+    <p style="color:var(--text2);font-size:.88rem">Otvorite listu klikom na plutajuće dugme 📋 u donjem desnom uglu.</p>
+  </div>
+  <div class="card">
+    <h2>Pošalji pacijenta spremnog za pregled</h2>
+    <form id="ready-form">
+      <div class="form-row">
+        <div class="field"><label>Broj pacijenta</label><input id="rf-number" required></div>
+        <div class="field"><label>Ime i prezime</label><input id="rf-name" required></div>
+      </div>
+      <div class="field"><label>Napomena (opciono)</label><textarea id="rf-note" rows="2"></textarea></div>
+      <button type="submit" class="btn-primary">Pošalji adminu</button>
+    </form>
+  </div>
+  <div class="card">
+    <h3>Istorija (poslednjih 30)</h3>
+    ${history.length ? history.map(p => patientRowHtml(p, 'history')).join('') : '<div class="list-empty">Nema zatvorenih stavki.</div>'}
+  </div>`;
+}
+
+function wireMainEvents() {
+  if (myRole.type === 'admin') {
+    document.querySelectorAll('[data-admin-tab]').forEach(btn => {
+      btn.onclick = () => { adminTab = btn.dataset.adminTab; render(); };
+    });
+    const form = $('#new-patient-form');
+    if (form) form.onsubmit = e => {
+      e.preventDefault();
+      const number = $('#np-number').value.trim();
+      const name = $('#np-name').value.trim();
+      const sectorId = $('#np-sector').value;
+      const reason = $('#np-reason').value;
+      const note = $('#np-note').value.trim();
+      if (!number || !name || !sectorId) return;
+      addPatientToSector(number, name, sectorId, reason, note);
+    };
+    const searchBox = $('#hist-search');
+    if (searchBox) searchBox.oninput = () => {
+      const q = searchBox.value.trim().toLowerCase();
+      const list = Object.values(patients).filter(p => p.status === 'closed' &&
+        (p.patientNumber.toLowerCase().includes(q) || p.patientName.toLowerCase().includes(q)))
+        .sort((a, b) => b.updatedAt - a.updatedAt);
+      $('#hist-rows').innerHTML = list.length ? list.map(p => patientRowHtml(p, 'history')).join('') : '<div class="list-empty">Nema rezultata.</div>';
+    };
+  } else {
+    const form = $('#ready-form');
+    if (form) form.onsubmit = e => {
+      e.preventDefault();
+      const number = $('#rf-number').value.trim();
+      const name = $('#rf-name').value.trim();
+      const note = $('#rf-note').value.trim();
+      if (!number || !name) return;
+      sendReadyForExam(number, name, note);
+      form.reset();
+    };
+  }
+}
+
+/* ---------- Floating panel ---------- */
+function fabBadgeCount() {
+  let queueCount = 0;
+  if (myRole.type === 'admin') {
+    queueCount = Object.values(patients).filter(p =>
+      (p.direction === 'toSector' && p.status === 'done') ||
+      (p.direction === 'toAdmin' && p.status === 'pending')).length;
+  } else {
+    queueCount = Object.values(patients).filter(p =>
+      p.sectorId === myRole.sectorId && p.direction === 'toSector' && p.status === 'pending').length;
+  }
+  return queueCount + unreadMessagesCount();
+}
+
+function unreadMessagesCount() {
+  const lastView = Number(localStorage.getItem('sf_last_msg_view') || 0);
+  return Object.values(messages).filter(m => isMessageForMe(m) && m.ts > lastView).length;
+}
+
+function renderFab() {
+  const count = fabBadgeCount();
+  const badge = $('#fab-badge');
+  badge.textContent = count > 99 ? '99+' : count;
+  badge.classList.toggle('hidden', count === 0);
+}
+
+function togglePanel() {
+  panelOpen = !panelOpen;
+  $('#side-panel').classList.toggle('hidden', !panelOpen);
+  if (panelOpen) renderPanelBody();
+}
+
+function setPanelTab(tab) {
+  panelTab = tab;
+  document.querySelectorAll('.panel-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'messages') {
+    localStorage.setItem('sf_last_msg_view', String(Date.now()));
+  }
+  renderPanelBody();
+  renderFab();
+}
+
+function renderPanelBody() {
+  const body = $('#panel-body');
+  if (panelTab === 'list') {
+    let list;
+    if (myRole.type === 'admin') {
+      list = Object.values(patients).filter(p =>
+        (p.direction === 'toSector' && p.status === 'done') ||
+        (p.direction === 'toAdmin' && p.status === 'pending'));
+    } else {
+      list = Object.values(patients).filter(p =>
+        p.sectorId === myRole.sectorId && p.direction === 'toSector' && p.status === 'pending');
+    }
+    list.sort((a, b) => a.createdAt - b.createdAt);
+    const ctx = myRole.type === 'admin' ? 'ready' : 'sector-queue';
+    body.innerHTML = list.length ? list.map(p => patientRowHtml(p, ctx)).join('') : '<div class="list-empty">Nema stavki.</div>';
+  } else {
+    const list = Object.values(messages).filter(isMessageForMe).sort((a, b) => b.ts - a.ts).slice(0, 30);
+    body.innerHTML = list.length ? list.map(m => `
+      <div class="row">
+        <div class="row-main">
+          <div class="row-title">${esc(m.from)}</div>
+          <div class="row-sub">${formatTime(m.ts)}</div>
+          <div class="row-note">${esc(m.text)}</div>
+        </div>
+      </div>`).join('') : '<div class="list-empty">Nema poruka.</div>';
+  }
+}
+
+/* ---------- Messages ---------- */
+function isMessageForMe(m) {
+  if (!myRole) return false;
+  if (myRole.type === 'admin') return m.to === 'all' || m.to === 'admin';
+  return m.to === 'all' || m.to === myRole.sectorId;
+}
+
+function processMessages() {
+  const relevant = Object.values(messages).filter(isMessageForMe).sort((a, b) => a.ts - b.ts);
+  relevant.forEach(m => {
+    if (alertedMessageIds.has(m.id)) return;
+    alertedMessageIds.add(m.id);
+    if (m.ts > tabLoadTs) urgentQueue.push(m);
+  });
+  if (!urgentShowing) showNextUrgent();
+}
+
+function showNextUrgent() {
+  if (!urgentQueue.length) { urgentShowing = false; return; }
+  urgentShowing = true;
+  const m = urgentQueue.shift();
+  $('#urgent-from').textContent = m.from + ' • ' + formatTime(m.ts);
+  $('#urgent-text').textContent = m.text;
+  $('#urgent-overlay').classList.remove('hidden');
+  playBeep();
+}
+
+function playBeep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const beep = (freq, delay) => setTimeout(() => {
+      const ctx = new Ctx();
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.5);
+    }, delay);
+    beep(880, 0);
+    beep(1046, 260);
+  } catch (e) { console.error('Zvuk nije uspeo:', e); }
+}
+
+function populateComposeToOptions() {
+  const sel = $('#compose-to');
+  let html = `<option value="all">Svi</option>`;
+  if (myRole.type === 'admin') {
+    Object.values(sectors).sort((a, b) => (a.order || 0) - (b.order || 0))
+      .forEach(s => { html += `<option value="${s.id}">${esc(s.name)}</option>`; });
+  } else {
+    html += `<option value="admin">Administrator</option>`;
+  }
+  sel.innerHTML = html;
+}
+
+/* ================================================================
+   SECTORS MANAGEMENT (admin)
+   ================================================================ */
+function renderSectorsModal() {
+  const list = Object.values(sectors).sort((a, b) => (a.order || 0) - (b.order || 0));
+  $('#sectors-list').innerHTML = list.length ? list.map(s => `
+    <div class="sectors-manage-row">
+      <input value="${esc(s.name)}" onchange="renameSector('${s.id}', this.value)">
+      <button class="btn-ghost btn-sm btn-icon" onclick="deleteSectorConfirm('${s.id}')" title="Obriši">🗑️</button>
+    </div>`).join('') : `<div class="list-empty">Nema sektora — dodajte prvi ispod.</div>`;
+}
+
+function renameSector(id, newName) {
+  newName = newName.trim();
+  if (!newName || !sectors[id]) return;
+  setSector(id, { ...sectors[id], name: newName });
+  renderSectorsModal();
+}
+
+function deleteSectorConfirm(id) {
+  const hasActive = Object.values(patients).some(p => p.sectorId === id && p.status !== 'closed');
+  if (hasActive && !confirm('Ovaj sektor ima aktivne pacijente. Obrisati ga ipak?')) return;
+  if (!hasActive && !confirm('Obrisati ovaj sektor?')) return;
+  removeSector(id);
+  renderSectorsModal();
+}
+
+function addSector() {
+  const input = $('#new-sector-name');
+  const name = input.value.trim();
+  if (!name) return;
+  const id = uid();
+  setSector(id, { id, name, order: Object.keys(sectors).length });
+  input.value = '';
+  renderSectorsModal();
+}
+
+/* ================================================================
+   THEME
+   ================================================================ */
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('sf_theme', theme);
+  const icon = theme === 'dark' ? '☀️' : '🌙';
+  const t1 = $('#theme-toggle'); if (t1) t1.textContent = icon;
+  const t2 = $('#theme-toggle-role'); if (t2) t2.textContent = icon;
+}
+function toggleTheme() {
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+
+/* ================================================================
+   STATIC EVENT WIRING
+   ================================================================ */
+function wireStaticEvents() {
+  $('#theme-toggle').onclick = toggleTheme;
+  $('#theme-toggle-role').onclick = toggleTheme;
+  $('#change-role-btn').onclick = changeRole;
+  $('#fab').onclick = togglePanel;
+  $('#panel-close').onclick = togglePanel;
+  document.querySelectorAll('.panel-tab').forEach(b => { b.onclick = () => setPanelTab(b.dataset.tab); });
+
+  $('#settings-btn').onclick = () => { renderSectorsModal(); $('#sectors-modal').classList.remove('hidden'); };
+  $('#sectors-modal-close').onclick = () => $('#sectors-modal').classList.add('hidden');
+  $('#add-sector-btn').onclick = addSector;
+  $('#new-sector-name').onkeydown = e => { if (e.key === 'Enter') addSector(); };
+
+  $('#urgent-btn').onclick = () => {
+    populateComposeToOptions();
+    $('#compose-text').value = '';
+    $('#compose-modal').classList.remove('hidden');
+  };
+  $('#compose-cancel').onclick = () => $('#compose-modal').classList.add('hidden');
+  $('#compose-send').onclick = () => {
+    const text = $('#compose-text').value.trim();
+    const to = $('#compose-to').value;
+    if (!text) return;
+    sendUrgentMessage(text, to);
+    $('#compose-modal').classList.add('hidden');
+  };
+  $('#urgent-ok').onclick = () => { $('#urgent-overlay').classList.add('hidden'); showNextUrgent(); };
+}
+
+/* ================================================================
+   INIT
+   ================================================================ */
+async function init() {
+  applyTheme(localStorage.getItem('sf_theme') || 'light');
+  loadLocalState();
+  wireStaticEvents();
+
+  if (FIREBASE_ENABLED) {
+    try { await firebaseAuth.signInAnonymously(); } catch (e) { console.error('Anonimna prijava nije uspela:', e); }
+    startCloudListeners();
+  } else {
+    window.addEventListener('storage', handleStorageEvent);
+  }
+
+  const savedRole = JSON.parse(localStorage.getItem('sf_role') || 'null');
+  if (savedRole && (savedRole.type === 'admin' || sectors[savedRole.sectorId])) {
+    myRole = savedRole;
+    showAppScreen();
+  } else {
+    render();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
