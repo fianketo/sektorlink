@@ -257,7 +257,23 @@ a { color: var(--primary); }
 </head>
 <body>
 
-<div id="role-screen" class="role-screen">
+<div id="connect-screen" class="role-screen">
+  <div class="role-card">
+    <button id="theme-toggle-connect" class="btn-ghost btn-icon theme-toggle-role">🌙</button>
+    <h1>🧪 SektorLink</h1>
+    <p>Unesite pristupni kod da se povežete na server</p>
+    <form id="connect-form">
+      <div class="field" style="text-align:left">
+        <label style="color:#94a3b8">Pristupni kod</label>
+        <input id="connect-code" autocomplete="off" required>
+      </div>
+      <div id="connect-error" class="role-hint hidden" style="color:var(--danger)"></div>
+      <button type="submit" class="btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:.5rem">Poveži se</button>
+    </form>
+  </div>
+</div>
+
+<div id="role-screen" class="role-screen hidden">
   <div class="role-card">
     <button id="theme-toggle-role" class="btn-ghost btn-icon theme-toggle-role">🌙</button>
     <h1>🧪 SektorLink</h1>
@@ -277,6 +293,7 @@ a { color: var(--primary); }
       <button id="urgent-btn" class="btn-danger btn-sm">📢 Hitna poruka</button>
       <button id="settings-btn" class="btn-ghost btn-sm btn-icon hidden" title="Sektori">⚙️</button>
       <button id="theme-toggle" class="btn-ghost btn-sm btn-icon">🌙</button>
+      <button id="change-code-btn" class="btn-ghost btn-sm">Promeni kod</button>
       <button id="change-role-btn" class="btn-ghost btn-sm">Promeni ulogu</button>
     </div>
   </header>
@@ -339,40 +356,7 @@ a { color: var(--primary); }
   </div>
 </div>
 
-<!-- ============================================================
-     FIREBASE SDK (compat build). Safe to load even before
-     FIREBASE_CONFIG is filled in — everything stays inert until then.
-     ============================================================ -->
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
-
 <script>
-/* ================================================================
-   FIREBASE CONFIG — zameni ovim placeholder vrednostima svoj pravi
-   config iz Firebase Console (Project settings → Your apps → Web).
-   Dok su ovo placeholder vrednosti, app radi u čisto lokalnom
-   (localStorage + cross-tab) režimu — pogledaj README.md.
-   ================================================================ */
-const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-
-const FIREBASE_ENABLED = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
-let firebaseDB = null;
-let firebaseAuth = null;
-if (FIREBASE_ENABLED) {
-  firebase.initializeApp(FIREBASE_CONFIG);
-  firebaseDB = firebase.database();
-  firebaseAuth = firebase.auth();
-}
-
 /* ================================================================
    STATE
    ================================================================ */
@@ -381,6 +365,7 @@ let patients = {};  // { id: { id, patientNumber, patientName, sectorId, directi
 let messages = {};  // { id: { id, text, from, to, ts } }
 let myRole = null;  // { type: 'admin' } | { type: 'sector', sectorId }
 
+let currentScreen = 'connect'; // 'connect' | 'role' | 'app'
 let adminTab = 'new';
 let panelTab = 'list';
 let panelOpen = false;
@@ -418,68 +403,111 @@ function sectorName(id) {
 }
 
 /* ================================================================
-   LOCAL STORAGE (fallback when Firebase isn't configured, and as a
-   warm-start cache before the first cloud snapshot arrives)
+   LOCAL STORAGE (warm-start cache — shown instantly on load, then
+   replaced by whatever the server sends right after connecting)
    ================================================================ */
 function loadLocalState() {
   sectors = JSON.parse(localStorage.getItem('sf_sectors') || '{}');
   patients = JSON.parse(localStorage.getItem('sf_patients') || '{}');
   messages = JSON.parse(localStorage.getItem('sf_messages') || '{}');
-  if (!FIREBASE_ENABLED && !Object.keys(sectors).length) seedSectors();
 }
 
 function saveLocalSectors() { localStorage.setItem('sf_sectors', JSON.stringify(sectors)); }
 function saveLocalPatients() { localStorage.setItem('sf_patients', JSON.stringify(patients)); }
 function saveLocalMessages() { localStorage.setItem('sf_messages', JSON.stringify(messages)); }
 
-function seedSectors() {
-  ['Sektor 1', 'Sektor 2', 'Sektor 3'].forEach((name, i) => {
-    const id = uid();
-    sectors[id] = { id, name, order: i };
-  });
-  saveLocalSectors();
+/* ================================================================
+   WEBSOCKET CONNECTION (server is same-origin — the page was loaded
+   from it, so location.host is always the right address to dial)
+   ================================================================ */
+let ws = null;
+let wsCode = '';
+let hasConnectedOnce = false;
+let reconnectTimer = null;
+
+function wsUrl(code) {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return proto + '//' + location.host + '/?code=' + encodeURIComponent(code);
 }
 
-function handleStorageEvent(e) {
-  if (['sf_sectors', 'sf_patients', 'sf_messages'].includes(e.key)) {
-    loadLocalState();
-    render();
+function wsSend(msg) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+}
+
+function connectWs(code) {
+  wsCode = code;
+  clearTimeout(reconnectTimer);
+  try { if (ws) ws.close(); } catch (e) {}
+  ws = new WebSocket(wsUrl(code));
+  ws.onclose = ev => {
+    updateConnDot(false);
+    if (!hasConnectedOnce) {
+      const msg = ev.code === 4001 ? 'Pogrešan pristupni kod.' : 'Ne mogu da se povežem na server. Proveri da li je server pokrenut i da li si na istoj mreži.';
+      showConnectScreen(msg);
+      if (ev.code === 4001) return;
+    }
+    reconnectTimer = setTimeout(() => connectWs(wsCode), 3000);
+  };
+  ws.onmessage = ev => handleWsMessage(ev.data);
+}
+
+function handleWsMessage(raw) {
+  let msg;
+  try { msg = JSON.parse(raw); } catch (e) { return; }
+
+  if (msg.type === 'init') {
+    hasConnectedOnce = true;
+    updateConnDot(true);
+    sectors = msg.sectors || {}; patients = msg.patients || {}; messages = msg.messages || {};
+    saveLocalSectors(); saveLocalPatients(); saveLocalMessages();
+    localStorage.setItem('sf_code', wsCode);
+    if (currentScreen === 'connect') navigateAfterConnect();
+    else onStateChanged();
+    return;
+  }
+  if (msg.type === 'update') {
+    if (msg.collection === 'sectors') { sectors[msg.id] = msg.data; saveLocalSectors(); }
+    else if (msg.collection === 'patients') { patients[msg.id] = msg.data; saveLocalPatients(); }
+    else if (msg.collection === 'messages') { messages[msg.id] = msg.data; saveLocalMessages(); }
+  } else if (msg.type === 'remove') {
+    if (msg.collection === 'sectors') { delete sectors[msg.id]; saveLocalSectors(); }
+    else if (msg.collection === 'patients') { delete patients[msg.id]; saveLocalPatients(); }
+    else if (msg.collection === 'messages') { delete messages[msg.id]; saveLocalMessages(); }
+  }
+  onStateChanged();
+}
+
+function navigateAfterConnect() {
+  const savedRole = JSON.parse(localStorage.getItem('sf_role') || 'null');
+  if (savedRole && (savedRole.type === 'admin' || sectors[savedRole.sectorId])) {
+    myRole = savedRole;
+    showAppScreen();
+  } else {
+    showRoleScreen();
   }
 }
 
-/* ================================================================
-   CLOUD (per-record writes — never overwrite the whole collection,
-   so two computers editing at the same time can't clobber each other)
-   ================================================================ */
-function cloudSet(path, id, data) {
-  if (firebaseDB) firebaseDB.ref(path + '/' + id).set(data).catch(console.error);
-}
-function cloudRemove(path, id) {
-  if (firebaseDB) firebaseDB.ref(path + '/' + id).remove().catch(console.error);
+function onStateChanged() {
+  if (currentScreen === 'role') renderRoleScreen();
+  else if (currentScreen === 'app') render();
 }
 
-function startCloudListeners() {
-  firebaseDB.ref('sectors').on('value', snap => { sectors = snap.val() || {}; saveLocalSectors(); render(); });
-  firebaseDB.ref('patients').on('value', snap => { patients = snap.val() || {}; saveLocalPatients(); render(); });
-  firebaseDB.ref('messages').on('value', snap => { messages = snap.val() || {}; saveLocalMessages(); render(); });
-  firebaseDB.ref('.info/connected').on('value', snap => {
-    const dot = $('#conn-dot');
-    if (!dot) return;
-    if (snap.val() === true) { dot.className = 'conn-dot online'; dot.title = 'Povezano na oblak — uživo sa svim računarima'; }
-    else { dot.className = 'conn-dot offline'; dot.title = 'Nije trenutno povezano na oblak'; }
-  });
+function updateConnDot(connected) {
+  const dot = $('#conn-dot'); if (!dot) return;
+  if (connected) { dot.className = 'conn-dot online'; dot.title = 'Povezano na server — uživo sa svim računarima'; }
+  else { dot.className = 'conn-dot offline'; dot.title = 'Nije povezano na server — pokušavam ponovo...'; }
 }
 
 /* ================================================================
    DATA MUTATIONS
    ================================================================ */
-function setSector(id, data) { sectors[id] = data; saveLocalSectors(); cloudSet('sectors', id, data); render(); }
-function removeSector(id) { delete sectors[id]; saveLocalSectors(); cloudRemove('sectors', id); render(); }
+function setSector(id, data) { sectors[id] = data; saveLocalSectors(); wsSend({ type: 'mutate', collection: 'sectors', id, data }); render(); }
+function removeSector(id) { delete sectors[id]; saveLocalSectors(); wsSend({ type: 'remove', collection: 'sectors', id }); render(); }
 
-function setPatient(id, data) { patients[id] = data; saveLocalPatients(); cloudSet('patients', id, data); render(); }
-function removePatient(id) { delete patients[id]; saveLocalPatients(); cloudRemove('patients', id); render(); }
+function setPatient(id, data) { patients[id] = data; saveLocalPatients(); wsSend({ type: 'mutate', collection: 'patients', id, data }); render(); }
+function removePatient(id) { delete patients[id]; saveLocalPatients(); wsSend({ type: 'remove', collection: 'patients', id }); render(); }
 
-function setMessage(id, data) { messages[id] = data; saveLocalMessages(); cloudSet('messages', id, data); }
+function setMessage(id, data) { messages[id] = data; saveLocalMessages(); wsSend({ type: 'mutate', collection: 'messages', id, data }); render(); }
 
 function addPatientToSector(number, name, sectorId, reason, note) {
   const id = uid();
@@ -534,12 +562,43 @@ function changeRole() {
   localStorage.removeItem('sf_role');
   panelOpen = false;
   $('#side-panel').classList.add('hidden');
+  $('#fab').classList.add('hidden');
+  showRoleScreen();
+}
+
+function changeCode() {
+  clearTimeout(reconnectTimer);
+  try { if (ws) ws.close(); } catch (e) {}
+  ws = null;
+  hasConnectedOnce = false;
+  panelOpen = false;
+  $('#side-panel').classList.add('hidden');
+  $('#fab').classList.add('hidden');
+  $('#connect-code').value = wsCode || '';
+  showConnectScreen();
+}
+
+function showConnectScreen(errorMsg) {
+  currentScreen = 'connect';
+  $('#app-screen').classList.add('hidden');
+  $('#role-screen').classList.add('hidden');
+  $('#connect-screen').classList.remove('hidden');
+  const err = $('#connect-error');
+  if (errorMsg) { err.textContent = errorMsg; err.classList.remove('hidden'); }
+  else { err.classList.add('hidden'); }
+}
+
+function showRoleScreen() {
+  currentScreen = 'role';
+  $('#connect-screen').classList.add('hidden');
   $('#app-screen').classList.add('hidden');
   $('#role-screen').classList.remove('hidden');
-  render();
+  renderRoleScreen();
 }
 
 function showAppScreen() {
+  currentScreen = 'app';
+  $('#connect-screen').classList.add('hidden');
   $('#role-screen').classList.add('hidden');
   $('#app-screen').classList.remove('hidden');
   $('#fab').classList.remove('hidden');
@@ -550,17 +609,11 @@ function showAppScreen() {
    RENDER
    ================================================================ */
 function render() {
-  if (!myRole) { renderRoleScreen(); updateConnDot(); return; }
   renderTopbar();
   renderMain();
   renderFab();
   if (panelOpen) renderPanelBody();
   processMessages();
-}
-
-function updateConnDot() {
-  const dot = $('#conn-dot'); if (!dot) return;
-  if (!FIREBASE_ENABLED) { dot.className = 'conn-dot local'; dot.title = 'Lokalni režim (bez Firebase-a)'; }
 }
 
 function renderRoleScreen() {
@@ -571,7 +624,7 @@ function renderRoleScreen() {
     sectorList.forEach(s => {
       html += `<button class="role-btn" onclick='chooseRole({"type":"sector","sectorId":"${s.id}"})'>🧪 ${esc(s.name)}</button>`;
     });
-  } else if (FIREBASE_ENABLED) {
+  } else {
     html += `<div class="role-hint">Nema još definisanih sektora. Administrator prvo treba da ih doda (⚙️ u aplikaciji).</div>`;
   }
   box.innerHTML = html;
@@ -919,6 +972,7 @@ function applyTheme(theme) {
   const icon = theme === 'dark' ? '☀️' : '🌙';
   const t1 = $('#theme-toggle'); if (t1) t1.textContent = icon;
   const t2 = $('#theme-toggle-role'); if (t2) t2.textContent = icon;
+  const t3 = $('#theme-toggle-connect'); if (t3) t3.textContent = icon;
 }
 function toggleTheme() {
   applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
@@ -930,7 +984,15 @@ function toggleTheme() {
 function wireStaticEvents() {
   $('#theme-toggle').onclick = toggleTheme;
   $('#theme-toggle-role').onclick = toggleTheme;
+  $('#theme-toggle-connect').onclick = toggleTheme;
   $('#change-role-btn').onclick = changeRole;
+  $('#change-code-btn').onclick = changeCode;
+  $('#connect-form').onsubmit = e => {
+    e.preventDefault();
+    const code = $('#connect-code').value.trim();
+    if (!code) return;
+    connectWs(code);
+  };
   $('#fab').onclick = togglePanel;
   $('#panel-close').onclick = togglePanel;
   document.querySelectorAll('.panel-tab').forEach(b => { b.onclick = () => setPanelTab(b.dataset.tab); });
@@ -959,24 +1021,17 @@ function wireStaticEvents() {
 /* ================================================================
    INIT
    ================================================================ */
-async function init() {
+function init() {
   applyTheme(localStorage.getItem('sf_theme') || 'light');
   loadLocalState();
   wireStaticEvents();
 
-  if (FIREBASE_ENABLED) {
-    try { await firebaseAuth.signInAnonymously(); } catch (e) { console.error('Anonimna prijava nije uspela:', e); }
-    startCloudListeners();
+  const savedCode = localStorage.getItem('sf_code');
+  if (savedCode) {
+    $('#connect-code').value = savedCode;
+    connectWs(savedCode);
   } else {
-    window.addEventListener('storage', handleStorageEvent);
-  }
-
-  const savedRole = JSON.parse(localStorage.getItem('sf_role') || 'null');
-  if (savedRole && (savedRole.type === 'admin' || sectors[savedRole.sectorId])) {
-    myRole = savedRole;
-    showAppScreen();
-  } else {
-    render();
+    showConnectScreen();
   }
 }
 

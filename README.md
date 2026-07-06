@@ -1,12 +1,7 @@
 # SektorLink – Pacijenti i hitne poruke između računara
 
-Aplikacija je jedan samostalan HTML fajl (`index.html`) — bez servera, bez build koraka.
-
-- **Bez podešavanja Firebase-a**: radi u lokalnom (`localStorage`) režimu. Dva tabа **u istom
-  browseru na istom računaru** se uživo sinhronizuju (korisno za brzo testiranje), ali različiti
-  fizički računari ne dele podatke dok se ne podesi Firebase.
-- **Sa podešenim Firebase-om (obavezno za pravu upotrebu na više računara)**: svi računari dele
-  iste podatke uživo (real-time), bez ikakve prijave/lozinke za korisnike.
+Sopstveni server (Node.js) koji radi na jednom računaru u firmi — svi podaci ostaju na tom
+računaru, ništa se ne šalje na Google/Firebase ili bilo koji spoljni servis.
 
 ## Šta aplikacija radi
 
@@ -22,52 +17,84 @@ Aplikacija je jedan samostalan HTML fajl (`index.html`) — bez servera, bez bui
 - Istorija zatvorenih stavki (audit trag), tamna/svetla tema, sektori se dodaju/preimenuju/brišu
   kroz ⚙️ (samo Administrator).
 
-## Podešavanje Firebase-a (jednom, ~5-10 min, besplatno, bez kartice)
+## Kako radi (arhitektura)
 
-1. Idi na **https://console.firebase.google.com**, prijavi se Google nalogom, **Add project**
-   (napravi **nov, poseban** projekat samo za ovu aplikaciju).
-2. **Build → Authentication → Get started → Sign-in method → Anonymous → Enable.**
-   (Ovde namerno koristimo *Anonymous*, ne Email/Password — aplikacija nema login ekran; ovo
-   samo omogućava da baza zna da je zahtev došao iz same aplikacije, a ne od nasumičnog posetioca.)
-3. **Build → Realtime Database → Create Database.** Izaberi region, izaberi **"Start in locked mode"**.
-4. Otvori tab **Rules** te baze i zameni sadržaj sa:
-   ```json
-   {
-     "rules": {
-       ".read": "auth != null",
-       ".write": "auth != null"
-     }
-   }
+Jedan Node.js proces radi sve: služi aplikaciju (fajlovi u `public/`) i drži uživo (WebSocket)
+konekciju sa svim otvorenim računarima, na istom portu. Podaci se čuvaju u `data/db.json` na
+tom istom računaru — restart servera ih ne briše.
+
+Svaki računar samo otvori adresu tog servera u browseru (kao običan sajt) i unese **pristupni
+kod** — nema pravih naloga/lozinki po osobi.
+
+## Podešavanje (jednom, na računaru koji će biti server)
+
+1. Instaliraj [Node.js](https://nodejs.org) (LTS verzija) — obično dvoklik na instaler, Next-Next-Finish.
+2. Iskopiraj ceo `sektorlink` folder na taj računar (ili `git clone` ovaj repo).
+3. Napravi svoj `config.json` (jednom): iskopiraj `config.example.json` u fajl po imenu
+   `config.json`, otvori ga i promeni `"accessCode"` u svoju šifru (npr. neki broj koji svi u
+   firmi znaju), po želji promeni i `"port"`.
+4. Otvori komandnu liniju (cmd/PowerShell) u tom folderu i pokreni:
    ```
-   Klikni **Publish**.
-5. Zupčanik gore levo → **Project settings** → "Your apps" → ikonica **Web (`</>`)** → registruj
-   app. Prikazaće se `firebaseConfig` objekat.
-6. Otvori `index.html`, pronađi `const FIREBASE_CONFIG = { ... }` na vrhu skripte, i zameni
-   placeholder vrednosti pravim vrednostima iz koraka 5. Sačuvaj.
-7. **Authentication → Settings → Authorized domains** → dodaj domen na kom će sajt živeti
-   (npr. `tvoje-korisnicko-ime.github.io`). Bez ovog koraka aplikacija neće raditi na živom
-   sajtu (radiće samo na `localhost` dok testiraš lokalno).
-8. Otvori sajt na svakom računaru i izaberi ulogu (Administrator ili odgovarajući sektor).
-   Administrator prvo treba da doda prave sektore kroz ⚙️ pre nego što se pojave kao izbor na
-   drugim računarima.
+   npm install
+   npm start
+   ```
+5. Kad piše `SektorLink server radi na portu 3131`, server radi. Ostavi taj prozor otvoren
+   (ili podesi autostart — pogledaj ispod).
 
-### Bezbednosna napomena
+## Pristup sa ostalih računara u lokalnoj mreži
 
-Pravilo `auth != null` znači da svako ko otvori app (i time dobije anonimnu sesiju) može da
-čita/piše podatke — nema razdvajanja po ulogama na nivou baze (to app radi na UI nivou). Za
-internu upotrebu u jednoj ustanovi ovo je uobičajeno prihvatljivo. Pošto nema pravih
-imena/lozinki naloga, korisnici nikad ne vide login ekran.
+1. Na server-računaru nađi njegovu lokalnu IP adresu: `ipconfig` u cmd-u, potraži "IPv4 Address"
+   (izgleda npr. kao `192.168.1.50`).
+2. Na svakom drugom računaru u istoj mreži, otvori browser i idi na:
+   ```
+   http://192.168.1.50:3131/
+   ```
+   (zameni IP-jem sa koraka 1). Unesi pristupni kod iz `config.json` — pamti se, ne pita se
+   ponovo na tom računaru dok se ne klikne "Promeni kod".
 
-## Postavljanje na besplatan GitHub Pages
+## Pristup za par računara van lokalne mreže (Cloudflare Tunnel)
 
-1. Napravi **nov, poseban** GitHub repozitorijum (Public — potrebno za besplatan Pages), npr. `sektorlink`.
-2. Otpremi ova 4 fajla (`index.html`, `manifest.json`, `icon.svg`, `README.md`) u koren tog repoa.
-3. **Settings → Pages** → "Build and deployment" → **Deploy from a branch** → grana `main`, folder `/ (root)` → Save.
-4. Posle 1-2 minuta sajt je dostupan na `https://tvoje-korisnicko-ime.github.io/sektorlink/`.
-5. Ne zaboravi korak 7 iz sekcije o Firebase-u iznad (dodaj taj domen u Authorized domains).
+Pošto ne postoji VPN, koristi se besplatan Cloudflare Tunnel — server dobija sigurnu javnu
+adresu bez ikakvog otvaranja rutera ili port-forwarding-a.
 
-## Napomena o zvuku
+1. Na server-računaru instaliraj `cloudflared` ([uputstvo](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)).
+2. Dok `npm start` radi (server sluša na portu 3131), u novom prozoru komandne linije pokreni:
+   ```
+   cloudflared tunnel --url http://localhost:3131
+   ```
+3. Dobićeš privremenu adresu tipa `https://nasumicna-rec.trycloudflare.com` — to je adresa koju
+   ti udaljeni računari otvaraju u browseru (unose isti pristupni kod kao i ostali).
+4. Napomena: ovaj besplatni "quick tunnel" dobija **novu** adresu svaki put kad ga ponovo
+   pokreneš. Ako to postane nezgodno (stalno slanje nove adrese ljudima), sledeći korak je
+   named tunnel sa besplatnim Cloudflare nalogom i sopstvenim domenom — javi ako ti to zatreba,
+   pa podešavamo.
 
-Zvučni signal za hitne poruke koristi Web Audio API i radi tek posle prve interakcije korisnika
-sa stranicom (ograničenje browsera protiv autoplay-a zvuka) — u praksi nije problem jer se ulazi
-preko ekrana za izbor uloge.
+## Bezbednosna napomena
+
+Pristupni kod je jedina zaštita — svako ko ga zna može da čita/piše podatke (nema odvojenih
+naloga po osobi/ulozi). Za internu upotrebu u jednoj ustanovi ovo je uobičajeno prihvatljivo,
+pogotovo pošto je kod dodatni sloj povrh toga što serveru inače ne može niko spolja da priđe
+osim preko tvog Cloudflare Tunnel linka (koji sam po sebi nije javno oglašen/pretraživ).
+
+Podaci pacijenata (`data/db.json`) žive isključivo na server-računaru — ne šalju se nikom
+trećem. Redovno pravi rezervnu kopiju tog fajla (npr. povremeno kopiraj `data/db.json` na USB
+ili mrežni disk) — to je jedini fajl koji, ako se izgubi (kvar diska i sl.), znači gubitak
+istorije. Sam kod aplikacije (u ovom repou) ne sadrži nikakve podatke pacijenata.
+
+## Automatsko pokretanje pri paljenju Windows računara
+
+Da ne moraš ručno da kucaš `npm start` svaki put:
+
+1. Otvori **Task Scheduler** (pretraga u Start meniju) → **Create Task**.
+2. Tab **General**: ime npr. "SektorLink server", čekiraj "Run whether user is logged on or not"
+   (ili "Run only when user is logged on" ako ti je jednostavnije).
+3. Tab **Triggers** → **New** → "At startup" (ili "At log on").
+4. Tab **Actions** → **New** → Program/script: `npm`, Arguments: `start`, Start in: putanja do
+   `sektorlink` foldera (npr. `C:\SektorLink`).
+5. Sačuvaj. Server će se sam pokrenuti pri sledećem paljenju računara.
+
+## Ažuriranje aplikacije
+
+Kad se kod promeni (npr. dodamo novu funkciju), na server-računaru: zaustavi server (Ctrl+C u
+prozoru gde radi, ili restartuj Task Scheduler task), povuci novi kod (`git pull` ili zameni
+fajlove), pa `npm start` ponovo. `data/db.json` ostaje netaknut — to je odvojeno od koda.
