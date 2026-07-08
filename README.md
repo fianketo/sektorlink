@@ -29,17 +29,20 @@ kod** — nema pravih naloga/lozinki po osobi.
 ## Podešavanje (jednom, na računaru koji će biti server)
 
 1. Instaliraj [Node.js](https://nodejs.org) (LTS verzija) — obično dvoklik na instaler, Next-Next-Finish.
+   Ovo je jedini korak koji fajl ispod ne može da uradi umesto tebe.
 2. Iskopiraj ceo `sektorlink` folder na taj računar (ili `git clone` ovaj repo).
-3. Napravi svoj `config.json` (jednom): iskopiraj `config.example.json` u fajl po imenu
-   `config.json`, otvori ga i promeni `"accessCode"` u svoju šifru (npr. neki broj koji svi u
-   firmi znaju), po želji promeni i `"port"`.
-4. Otvori komandnu liniju (cmd/PowerShell) u tom folderu i pokreni:
-   ```
-   npm install
-   npm start
-   ```
-5. Kad piše `SektorLink server radi na portu 3131`, server radi. Ostavi taj prozor otvoren
-   (ili podesi autostart — pogledaj ispod).
+3. Dupli klik na **`Pokreni.bat`** u tom folderu. On sam:
+   - napravi `config.json` (ako ne postoji),
+   - instalira potrebne pakete (`npm install`, samo prvi put, može potrajati),
+   - pokrene server.
+4. Kad piše `SektorLink server radi na portu 3131`, server radi. Ostavi taj prozor otvoren
+   (ili podesi autostart — pogledaj ispod, tako da se sam pokreće i posle restarta računara).
+5. Podrazumevani pristupni kod je `PROMENI_ME`. Kad budeš imao/imala vremena, otvori `config.json`
+   u Notepad-u, promeni `"accessCode"` u svoju šifru (i po želji `"port"`), sačuvaj, pa restartuj
+   server (zatvori prozor i ponovo dupli klik na `Pokreni.bat`).
+
+Za sledeći put: samo dupli klik na `Pokreni.bat` — ostali koraci se preskaču jer je sve već
+napravljeno.
 
 ## Pristup sa ostalih računara u lokalnoj mreži
 
@@ -83,14 +86,14 @@ istorije. Sam kod aplikacije (u ovom repou) ne sadrži nikakve podatke pacijenat
 
 ## Automatsko pokretanje pri paljenju Windows računara
 
-Da ne moraš ručno da kucaš `npm start` svaki put:
+Da ne moraš ručno da pokrećeš `Pokreni.bat` svaki put:
 
 1. Otvori **Task Scheduler** (pretraga u Start meniju) → **Create Task**.
 2. Tab **General**: ime npr. "SektorLink server", čekiraj "Run whether user is logged on or not"
    (ili "Run only when user is logged on" ako ti je jednostavnije).
 3. Tab **Triggers** → **New** → "At startup" (ili "At log on").
-4. Tab **Actions** → **New** → Program/script: `npm`, Arguments: `start`, Start in: putanja do
-   `sektorlink` foldera (npr. `C:\SektorLink`).
+4. Tab **Actions** → **New** → Program/script: puna putanja do `Pokreni.bat` (npr.
+   `C:\SektorLink\Pokreni.bat`), Start in: putanja do `sektorlink` foldera (npr. `C:\SektorLink`).
 5. Sačuvaj. Server će se sam pokrenuti pri sledećem paljenju računara.
 
 ## Ažuriranje aplikacije
