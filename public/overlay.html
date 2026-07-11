@@ -33,7 +33,7 @@ body.collapsed .collapsed-icon {
 .collapsed-icon { display: none; }
 
 .header {
-  background: rgba(15,23,42,.75); backdrop-filter: blur(8px);
+  background: rgba(15,23,42,.92); backdrop-filter: blur(8px);
   padding: .5rem .7rem; display: flex; align-items: center; justify-content: space-between;
   -webkit-app-region: drag; border-radius: 20px 20px 0 0;
   border-bottom: 1px solid rgba(255,255,255,.08);
@@ -49,7 +49,7 @@ body.collapsed .collapsed-icon {
 .header-btns button:hover { background: rgba(255,255,255,.22); }
 
 .tabs-bar {
-  background: rgba(15,23,42,.75); display: flex; gap: .35rem; padding: .5rem .6rem 0;
+  background: rgba(15,23,42,.92); display: flex; gap: .35rem; padding: .5rem .6rem 0;
   -webkit-app-region: no-drag;
 }
 .tabs-bar.hidden { display: none; }
@@ -60,7 +60,7 @@ body.collapsed .collapsed-icon {
 .tab-btn.active { background: rgba(255,255,255,.1); color: #e8eef7; }
 
 .content {
-  background: rgba(15,23,42,.75); backdrop-filter: blur(8px);
+  background: rgba(15,23,42,.92); backdrop-filter: blur(8px);
   max-height: 560px; overflow-y: auto; padding: .6rem;
   border-radius: 0 0 20px 20px;
 }
@@ -290,12 +290,20 @@ function navigateAfterConnect() {
 function sectorName(id) { return (sectors[id] && sectors[id].name) || 'Nepoznat sektor'; }
 
 function myQueue() {
+  return Object.values(patients).filter(isRelevantToMe);
+}
+
+// Shared by myQueue() (what to list) and the new-task auto-expand check
+// below (what should interrupt a collapsed bubble). A sector's queue was
+// missing the sectorId check entirely — every sector was seeing every other
+// sector's pending tasks in the desktop app's unified list, not just its
+// own (the browser UI's index.html already filtered this correctly).
+function isRelevantToMe(p) {
   if (myRole.type === 'admin') {
-    return Object.values(patients).filter(p =>
-      (p.direction === 'toSector' && (p.status === 'pending' || p.status === 'done')) ||
-      (p.direction === 'toAdmin' && p.status === 'pending'));
+    return (p.direction === 'toSector' && (p.status === 'pending' || p.status === 'done')) ||
+      (p.direction === 'toAdmin' && p.status === 'pending');
   }
-  return Object.values(patients).filter(p => p.direction === 'toSector' && p.status === 'pending');
+  return p.direction === 'toSector' && p.sectorId === myRole.sectorId && p.status === 'pending';
 }
 
 function actionFor(p) {
@@ -665,7 +673,16 @@ function handleWsMessage(raw) {
   }
   if (msg.type === 'update') {
     if (msg.collection === 'sectors') sectors[msg.id] = msg.data;
-    else if (msg.collection === 'patients') patients[msg.id] = msg.data;
+    else if (msg.collection === 'patients') {
+      const isNewTask = !patients[msg.id];
+      patients[msg.id] = msg.data;
+      // A brand new task relevant to me arrived while collapsed — expand
+      // so it isn't missed. Only for genuinely new items, not every status
+      // update on something already in the list.
+      if (isNewTask && currentScreen === 'app' && myRole && isRelevantToMe(msg.data) && body.classList.contains('collapsed')) {
+        toggleCollapse(false);
+      }
+    }
     else if (msg.collection === 'messages') messages[msg.id] = msg.data;
   } else if (msg.type === 'remove') {
     if (msg.collection === 'sectors') delete sectors[msg.id];
