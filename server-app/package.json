@@ -1,6 +1,6 @@
 {
   "name": "sektorlink-server-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "SektorLink server — Electron shell (tray + status prozor) oko postojeceg server.js",
   "main": "main.js",
   "scripts": {
