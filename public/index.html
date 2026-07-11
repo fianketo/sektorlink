@@ -135,6 +135,7 @@ a { color: var(--primary); }
 }
 .row-main { min-width: 0; }
 .row-title { font-weight: 600; font-size: .92rem; }
+.row-done-check { font-size: .85rem; }
 .row-sub { font-size: .78rem; color: var(--text2); margin-top: .15rem; }
 .row-note { font-size: .78rem; color: var(--text2); margin-top: .25rem; font-style: italic; }
 .row-actions { display: flex; gap: .4rem; flex-shrink: 0; }
@@ -706,10 +707,11 @@ function patientRowHtml(p, ctx) {
   } else if (ctx === 'review' || ctx === 'ready') {
     actions = `<button class="btn-primary btn-sm" onclick="closeItem('${p.id}')">Zatvori</button>`;
   }
+  const doneCheck = ctx === 'review' ? '<span class="row-done-check" title="Sektor je potvrdio da je odrađeno">✅</span> ' : '';
   return `
   <div class="row">
     <div class="row-main">
-      <div class="row-title">${esc(p.patientNumber)} — ${esc(p.patientName)}</div>
+      <div class="row-title">${doneCheck}${esc(p.patientNumber)} — ${esc(p.patientName)}</div>
       <div class="row-sub"><span class="badge ${badgeClass}">${reasonLabel(p.reason)}</span> · ${typeLabel} · ${formatTime(p.updatedAt)}</div>
       ${p.note ? `<div class="row-note">${esc(p.note)}</div>` : ''}
     </div>

@@ -75,7 +75,9 @@ body.collapsed .collapsed-icon {
 }
 .item.danger { border-left-color: #ef4444; }
 .item.purple { border-left-color: #8b5cf6; }
-.item-title { color: #e8eef7; font-weight: 600; font-size: .85rem; }
+.item.done { border-left-color: #22c55e; }
+.item-title { color: #e8eef7; font-weight: 600; font-size: .85rem; display: flex; align-items: center; gap: .35rem; }
+.item-done-check { color: #22c55e; font-size: .9rem; }
 .item-sub { color: #94a3b8; font-size: .7rem; margin-top: .15rem; }
 .item-note { color: #cbd5e1; font-size: .72rem; margin-top: .3rem; font-style: italic; }
 .item-actions { display: flex; justify-content: flex-end; margin-top: .4rem; }
@@ -513,12 +515,15 @@ function renderListTab(list) {
   list = (list || myQueue()).slice().sort((a, b) => a.createdAt - b.createdAt);
   if (!list.length) { content.innerHTML = '<div class="empty">Nema stavki na čekanju.</div>'; return; }
   content.innerHTML = list.map(p => {
-    const cls = p.reason === 'nije-uradjeno' ? 'danger' : (p.reason === 'spreman-za-pregled' ? 'purple' : '');
+    // Sector confirmed this task done, waiting on the admin to review/close
+    // it — flagged so the admin can see it's handled without opening it.
+    const isDone = myRole.type === 'admin' && p.direction === 'toSector' && p.status === 'done';
+    const cls = isDone ? 'done' : (p.reason === 'nije-uradjeno' ? 'danger' : (p.reason === 'spreman-za-pregled' ? 'purple' : ''));
     const act = actionFor(p);
     const typeLabel = p.direction === 'toSector' ? `→ ${esc(sectorName(p.sectorId))}` : `${esc(sectorName(p.sectorId))} → Admin`;
     return `
       <div class="item ${cls}">
-        <div class="item-title">${patientLabel(p)}</div>
+        <div class="item-title">${isDone ? '<span class="item-done-check">✅</span>' : ''}${patientLabel(p)}</div>
         <div class="item-sub">${reasonLabel(p.reason)} · ${typeLabel} · ${formatTime(p.updatedAt)}</div>
         ${p.note ? `<div class="item-note">${esc(p.note)}</div>` : ''}
         <div class="item-actions"><button data-id="${p.id}" data-next="${act.next}">${act.label}</button></div>
