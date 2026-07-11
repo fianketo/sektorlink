@@ -1,6 +1,6 @@
 {
   "name": "sektorlink-desktop",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "SektorLink desktop overlay (Electron shell oko postojeceg servera)",
   "main": "main.js",
   "scripts": {

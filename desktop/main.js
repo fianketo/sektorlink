@@ -116,8 +116,16 @@ function startApp() {
   createOverlayWindow();
   globalShortcut.register('CommandOrControl+Shift+L', () => {
     if (!overlayWindow) return;
-    if (overlayWindow.isVisible()) overlayWindow.hide();
-    else overlayWindow.showInactive();
+    if (overlayWindow.isVisible()) {
+      // Hiding a window doesn't stop its page's JS — if an urgent alert's
+      // beep loop was still running, it would otherwise keep beeping from
+      // the hidden window with no way to silence it (same fix as the
+      // in-page "Zatvori" button, just reached from the keyboard instead).
+      overlayWindow.webContents.send('stop-urgent-alert');
+      overlayWindow.hide();
+    } else {
+      overlayWindow.showInactive();
+    }
   });
 }
 

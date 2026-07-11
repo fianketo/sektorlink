@@ -763,9 +763,25 @@ collapsedIcon.addEventListener('click', () => {
   if (dragMoved) { dragMoved = false; return; }
   toggleCollapse(false);
 });
+// Hiding the window does NOT stop the page's JS — if an urgent alert's beep
+// loop (setInterval, see showNextUrgentOverlay) was still active (e.g. the
+// window was hidden before clicking "U redu" on the last one), it just kept
+// beeping forever from the hidden window with no way to silence it. Both
+// ways of hiding the window (the in-page × button, and the global
+// Ctrl+Shift+L shortcut handled in main.js) must kill any active/queued
+// alert first, not just hide.
+function stopUrgentAlert() {
+  clearInterval(urgentBeepInterval);
+  urgentShowing = false;
+  urgentQueue = [];
+}
 document.getElementById('closeBtn').onclick = () => {
+  stopUrgentAlert();
   if (window.electronOverlay) window.electronOverlay.hide();
 };
+if (window.electronOverlay && window.electronOverlay.onStopUrgentAlert) {
+  window.electronOverlay.onStopUrgentAlert(stopUrgentAlert);
+}
 </script>
 </body>
 </html>
