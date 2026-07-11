@@ -167,7 +167,12 @@ ipcMain.on('overlay-set-collapsed', (event, collapsed) => {
   if (!overlayWindow) return;
   const size = collapsed ? OVERLAY_COLLAPSED : OVERLAY_EXPANDED;
   const current = overlayWindow.getBounds();
-  overlayWindow.setBounds({ x: current.x, y: current.y, width: size.width, height: size.height });
+  // Anchor to the right edge instead of the left: keeping x fixed while
+  // shrinking from 340px down to 54px left the bubble sitting well to the
+  // left of where the panel's right edge (and its far-right desktop
+  // position) had been, instead of hugging it.
+  const rightEdge = current.x + current.width;
+  overlayWindow.setBounds({ x: rightEdge - size.width, y: current.y, width: size.width, height: size.height });
 });
 ipcMain.on('overlay-hide', () => { if (overlayWindow) overlayWindow.hide(); });
 

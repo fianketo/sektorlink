@@ -21,14 +21,18 @@ body.collapsed .header, body.collapsed .tabs-bar, body.collapsed .content { disp
 body.collapsed .collapsed-icon {
   display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;
   gap: .2rem; font-size: .95rem; font-weight: 700; color: #fff; cursor: pointer;
-  -webkit-app-region: no-drag;
+  /* drag (not no-drag): lets the bubble be dragged anywhere on screen while
+     collapsed — a plain click (no mouse movement) still reaches the onclick
+     handler below and expands it, Electron only treats it as a window drag
+     once the mouse actually moves. */
+  -webkit-app-region: drag;
   background: linear-gradient(135deg, #06b6d4, #8b5cf6);
   border-radius: 50%; box-shadow: 0 4px 16px rgba(0,0,0,.35);
 }
 .collapsed-icon { display: none; }
 
 .header {
-  background: rgba(15,23,42,.92); backdrop-filter: blur(8px);
+  background: rgba(15,23,42,.75); backdrop-filter: blur(8px);
   padding: .5rem .7rem; display: flex; align-items: center; justify-content: space-between;
   -webkit-app-region: drag; border-radius: 20px 20px 0 0;
   border-bottom: 1px solid rgba(255,255,255,.08);
@@ -44,7 +48,7 @@ body.collapsed .collapsed-icon {
 .header-btns button:hover { background: rgba(255,255,255,.22); }
 
 .tabs-bar {
-  background: rgba(15,23,42,.92); display: flex; gap: .35rem; padding: .5rem .6rem 0;
+  background: rgba(15,23,42,.75); display: flex; gap: .35rem; padding: .5rem .6rem 0;
   -webkit-app-region: no-drag;
 }
 .tabs-bar.hidden { display: none; }
@@ -55,7 +59,7 @@ body.collapsed .collapsed-icon {
 .tab-btn.active { background: rgba(255,255,255,.1); color: #e8eef7; }
 
 .content {
-  background: rgba(15,23,42,.92); backdrop-filter: blur(8px);
+  background: rgba(15,23,42,.75); backdrop-filter: blur(8px);
   max-height: 560px; overflow-y: auto; padding: .6rem;
   border-radius: 0 0 20px 20px;
 }
@@ -70,14 +74,20 @@ body.collapsed .collapsed-icon {
 }
 
 .item {
+  position: relative;
   background: rgba(255,255,255,.06); border-left: 3px solid #06b6d4;
   border-radius: 12px; padding: .55rem .7rem; margin-bottom: .5rem;
 }
 .item.danger { border-left-color: #ef4444; }
 .item.purple { border-left-color: #8b5cf6; }
 .item.done { border-left-color: #22c55e; }
-.item-title { color: #e8eef7; font-weight: 600; font-size: .85rem; display: flex; align-items: center; gap: .35rem; }
+.item-title { color: #e8eef7; font-weight: 600; font-size: .85rem; display: flex; align-items: center; gap: .35rem; padding-right: 3.2rem; }
 .item-done-check { color: #22c55e; font-size: .9rem; }
+.item-admin-badge {
+  position: absolute; top: .5rem; right: .6rem;
+  font-size: .6rem; font-weight: 800; letter-spacing: .04em; color: #06b6d4;
+  background: rgba(6,182,212,.15); padding: .1rem .4rem; border-radius: 6px;
+}
 .item-sub { color: #94a3b8; font-size: .7rem; margin-top: .15rem; }
 .item-note { color: #cbd5e1; font-size: .72rem; margin-top: .3rem; font-style: italic; }
 .item-actions { display: flex; justify-content: flex-end; margin-top: .4rem; }
@@ -518,11 +528,16 @@ function renderListTab(list) {
     // Sector confirmed this task done, waiting on the admin to review/close
     // it — flagged so the admin can see it's handled without opening it.
     const isDone = myRole.type === 'admin' && p.direction === 'toSector' && p.status === 'done';
+    // Admin's list mixes tasks admin sent out (toSector) with tasks a sector
+    // sent in on their own ("spreman za pregled") — tag the former so it's
+    // obvious at a glance which is which.
+    const isAdminCreated = myRole.type === 'admin' && p.direction === 'toSector';
     const cls = isDone ? 'done' : (p.reason === 'nije-uradjeno' ? 'danger' : (p.reason === 'spreman-za-pregled' ? 'purple' : ''));
     const act = actionFor(p);
     const typeLabel = p.direction === 'toSector' ? `→ ${esc(sectorName(p.sectorId))}` : `${esc(sectorName(p.sectorId))} → Admin`;
     return `
       <div class="item ${cls}">
+        ${isAdminCreated ? '<div class="item-admin-badge">ADMIN</div>' : ''}
         <div class="item-title">${isDone ? '<span class="item-done-check">✅</span>' : ''}${patientLabel(p)}</div>
         <div class="item-sub">${reasonLabel(p.reason)} · ${typeLabel} · ${formatTime(p.updatedAt)}</div>
         ${p.note ? `<div class="item-note">${esc(p.note)}</div>` : ''}
