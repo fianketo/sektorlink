@@ -2,6 +2,21 @@ const { app, BrowserWindow, globalShortcut, screen, ipcMain, Menu, shell } = req
 const path = require('path');
 const fs = require('fs');
 
+// Without this, launching the app a second time (e.g. it auto-started at
+// login, then someone also double-clicks the desktop icon) creates a whole
+// second, independent overlay window — invisible in the taskbar/alt-tab
+// (skipTaskbar), sharing the same saved "Administrator" role but with its
+// own separate urgent-alert state. A message sent from one window doesn't
+// reach the other's alertedMessageIds, so the second window treats it as a
+// brand new urgent message and starts beeping — with a window nobody can
+// find to dismiss it. Only one instance is now ever allowed to run; a
+// second launch just re-shows the existing window and exits.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+  process.exit(0);
+}
+
 // Must live in a writable per-user folder, not next to main.js: in a
 // packaged (asar) build __dirname points inside the read-only app.asar
 // archive, so writing config.json there would silently fail.
@@ -146,6 +161,17 @@ function showSetupWindow() {
   setupWindow.loadFile('setup.html');
   setupWindow.on('closed', () => { setupWindow = null; });
 }
+
+app.on('second-instance', () => {
+  if (overlayWindow) {
+    if (overlayWindow.isMinimized()) overlayWindow.restore();
+    overlayWindow.showInactive();
+    overlayWindow.moveTop();
+  } else if (setupWindow) {
+    setupWindow.show();
+    setupWindow.focus();
+  }
+});
 
 ipcMain.once('save-server-config', (event, serverUrl) => {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify({ serverUrl }, null, 2));
