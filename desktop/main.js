@@ -176,6 +176,15 @@ ipcMain.on('overlay-set-collapsed', (event, collapsed) => {
 });
 ipcMain.on('overlay-hide', () => { if (overlayWindow) overlayWindow.hide(); });
 
+// Manual drag for the collapsed bubble — see the no-drag CSS note in
+// overlay.html. dx/dy are the mouse's screen-position delta since the last
+// move event, applied straight to the window's current position.
+ipcMain.on('overlay-drag-bubble', (event, dx, dy) => {
+  if (!overlayWindow) return;
+  const current = overlayWindow.getBounds();
+  overlayWindow.setBounds({ x: current.x + dx, y: current.y + dy, width: current.width, height: current.height });
+});
+
 // Hitna poruka stigla — bring the overlay to the very front of the z-order
 // (even above other always-on-top windows) without stealing keyboard focus,
 // and if it happens to be hidden (Ctrl+Shift+L), show it again.

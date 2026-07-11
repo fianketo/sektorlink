@@ -21,11 +21,12 @@ body.collapsed .header, body.collapsed .tabs-bar, body.collapsed .content { disp
 body.collapsed .collapsed-icon {
   display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;
   gap: .2rem; font-size: .95rem; font-weight: 700; color: #fff; cursor: pointer;
-  /* drag (not no-drag): lets the bubble be dragged anywhere on screen while
-     collapsed — a plain click (no mouse movement) still reaches the onclick
-     handler below and expands it, Electron only treats it as a window drag
-     once the mouse actually moves. */
-  -webkit-app-region: drag;
+  /* no-drag: -webkit-app-region: drag looked right but silently ate click
+     events on Windows (the OS-level window-drag capture wins over the DOM
+     click), so the bubble could no longer be expanded once collapsed.
+     Dragging is instead done manually in JS below (mousedown/mousemove),
+     which lets a real click still get through untouched. */
+  -webkit-app-region: no-drag;
   background: linear-gradient(135deg, #06b6d4, #8b5cf6);
   border-radius: 50%; box-shadow: 0 4px 16px rgba(0,0,0,.35);
 }
@@ -719,7 +720,32 @@ function toggleCollapse(collapse) {
   if (window.electronOverlay) window.electronOverlay.setCollapsed(collapse);
 }
 document.getElementById('collapseBtn').onclick = () => toggleCollapse(true);
-document.getElementById('collapsedIcon').onclick = () => toggleCollapse(false);
+
+// Manual drag for the collapsed bubble (see the no-drag CSS note above): a
+// mousedown starts tracking, movement past a small threshold pans the
+// window via IPC and suppresses the click that would otherwise expand it,
+// a plain click (no real movement) still expands as before.
+let dragOrigin = null;
+let dragMoved = false;
+collapsedIcon.addEventListener('mousedown', e => {
+  dragOrigin = { x: e.screenX, y: e.screenY };
+  dragMoved = false;
+});
+window.addEventListener('mousemove', e => {
+  if (!dragOrigin) return;
+  const dx = e.screenX - dragOrigin.x;
+  const dy = e.screenY - dragOrigin.y;
+  if (!dragMoved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) dragMoved = true;
+  if (dragMoved) {
+    if (window.electronOverlay) window.electronOverlay.dragBubble(dx, dy);
+    dragOrigin = { x: e.screenX, y: e.screenY };
+  }
+});
+window.addEventListener('mouseup', () => { dragOrigin = null; });
+collapsedIcon.addEventListener('click', () => {
+  if (dragMoved) { dragMoved = false; return; }
+  toggleCollapse(false);
+});
 document.getElementById('closeBtn').onclick = () => {
   if (window.electronOverlay) window.electronOverlay.hide();
 };
