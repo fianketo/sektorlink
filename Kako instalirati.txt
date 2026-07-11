@@ -1,0 +1,65 @@
+Testirano na ovom računaru (instalirano → podešeno → povezano na server → uninstall), radi ispravno,
+i za klijent (desktop overlay) i za server instaler.
+
+## A) PC koji BUDE server — jedan instalacioni fajl
+
+1. Prekopiraj SAMO jedan fajl na taj računar:
+   `server-app\dist-installer\SektorLink-Server-Setup-1.0.0.exe`
+   (~74 MB, nosi sve sa sobom — ne treba Node.js instaliran na tom računaru.)
+2. Dupli klik na taj .exe. Instalira se odmah bez pitanja (nije potreban administratorski nalog za
+   samu instalaciju), pravi prečicu na Desktopu i u Start meniju, sam se pokrene na kraju.
+3. Prvi put kad krene, Windows će verovatno pitati za dozvolu za firewall/mrežu (da bi drugi
+   računari mogli da se povežu) — potvrdi (klikni "Yes"/"Da" na UAC prozoru koji iskoči). Ako ne
+   potvrdiš na vreme ili ne iskoči, i dalje radi za taj računar, samo mu ostali računari u mreži
+   možda neće moći da pristupe dok se ručno ne dozvoli u Windows Firewall-u.
+4. Otvori se mali prozor **"SektorLink Server"** koji pokazuje adresu (npr. `http://192.168.1.21:3131/`)
+   — to je adresa koju daješ ostalim računarima (korak B ispod). Dugme "Kopiraj" pored adrese.
+5. Zatvaranje tog prozora (X) ne gasi server — ostaje da radi u pozadini (ikonica u tray-u pored
+   sata, i sam se pokreće ubuduće pri paljenju računara). Za potpuno gašenje: desni klik na tray
+   ikonicu → "Izađi (zaustavi server)".
+
+Podrazumevani port je 3131, bez pristupnog koda (nema `accessCode` provere trenutno). Ako treba
+promeniti port: zatvori server (tray → Izađi), otvori
+`%APPDATA%\sektorlink-server-app\config.json` u Notepad-u, promeni `"port"`, sačuvaj, pokreni
+ponovo aplikaciju.
+
+Podaci (`data\db.json`) žive u `%APPDATA%\sektorlink-server-app\data\` na tom računaru — to
+preživljava deinstalaciju/reinstalaciju aplikacije (nije unutar instalacionog foldera), ali ipak
+redovno napravi rezervnu kopiju tog fajla.
+
+## B) Svaki drugi računar (laboranti/admin klijenti)
+
+1. Prekopiraj `desktop\dist-installer\SektorLink-Setup-1.0.0.exe` (~73 MB) na taj računar.
+2. Dupli klik — instalira se, pravi prečice, sam se pokrene.
+3. Prvi put pita za adresu servera — unesi adresu iz koraka A4 gore (npr. `192.168.1.21:3131`),
+   klikni "Sačuvaj i pokreni".
+4. Gotovo — ubuduće se sam povezuje, bez ovog ekrana.
+
+Sada je celokupan proces za oba: **prekopiraj jedan .exe → dupli klik → (za klijente: upiši adresu
+servera) → gotovo**.
+
+## Ako treba deinstalirati
+
+Start meni → SektorLink (ili SektorLink Server) → "Uninstall...", ili preko "Add/Remove programs"
+u Windows podešavanjima.
+
+## Kako se pravi novi instaler (samo ako se menja kod aplikacije)
+
+Ovo radi samo osoba koja menja/ažurira aplikaciju, na svom računaru, jednom, pre nego što podeli
+novi .exe:
+
+Za server:
+1. `cd server-app`
+2. `npm install` (samo prvi put, ili posle izmene `package.json`)
+3. `npm run dist`
+4. Novi instaler: `server-app\dist-installer\SektorLink-Server-Setup-<verzija>.exe`
+
+Za klijent (isto kao ranije):
+1. `cd desktop`
+2. `npm install` (samo prvi put)
+3. `npm run dist`
+4. Novi instaler: `desktop\dist-installer\SektorLink-Setup-<verzija>.exe`
+
+Napomena: verzija broja u imenu fajla dolazi iz `package.json` → `"version"` u odgovarajućem
+folderu (`desktop/` ili `server-app/`). Po želji promeni pre svakog `npm run dist` da se instaleri
+ne mešaju (npr. 1.0.1, 1.0.2...).

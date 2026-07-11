@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<title>SektorLink Overlay</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+html, body { background: transparent; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  width: 340px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+body.collapsed {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+}
+body.collapsed .header, body.collapsed .tabs-bar, body.collapsed .content { display: none; }
+body.collapsed .collapsed-icon {
+  display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;
+  gap: .2rem; font-size: .95rem; font-weight: 700; color: #fff; cursor: pointer;
+  -webkit-app-region: no-drag;
+  background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+  border-radius: 50%; box-shadow: 0 4px 16px rgba(0,0,0,.35);
+}
+.collapsed-icon { display: none; }
+
+.header {
+  background: rgba(15,23,42,.92); backdrop-filter: blur(8px);
+  padding: .5rem .7rem; display: flex; align-items: center; justify-content: space-between;
+  -webkit-app-region: drag; border-radius: 20px 20px 0 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.header-title { color: #e8eef7; font-size: .8rem; font-weight: 600; }
+.header-role { color: #94a3b8; font-size: .7rem; }
+.header-btns { display: flex; gap: .3rem; -webkit-app-region: no-drag; }
+.header-btns button {
+  width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(255,255,255,.1); color: #e8eef7; font-size: .8rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.header-btns button:hover { background: rgba(255,255,255,.22); }
+
+.tabs-bar {
+  background: rgba(15,23,42,.92); display: flex; gap: .35rem; padding: .5rem .6rem 0;
+  -webkit-app-region: no-drag;
+}
+.tabs-bar.hidden { display: none; }
+.tab-btn {
+  flex: 1; border: none; border-radius: 10px 10px 0 0; padding: .4rem .3rem; font-size: .75rem;
+  font-weight: 600; cursor: pointer; background: rgba(255,255,255,.05); color: #94a3b8;
+}
+.tab-btn.active { background: rgba(255,255,255,.1); color: #e8eef7; }
+
+.content {
+  background: rgba(15,23,42,.92); backdrop-filter: blur(8px);
+  max-height: 560px; overflow-y: auto; padding: .6rem;
+  border-radius: 0 0 20px 20px;
+}
+.content::-webkit-scrollbar { width: 4px; }
+.content::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 4px; }
+
+.empty {
+  color: #94a3b8; font-size: .8rem; text-align: center; padding: 1.4rem 0; font-style: italic;
+}
+.hint {
+  color: #e8eef7; font-size: .78rem; text-align: center; padding: 1rem; line-height: 1.5;
+}
+
+.item {
+  background: rgba(255,255,255,.06); border-left: 3px solid #06b6d4;
+  border-radius: 12px; padding: .55rem .7rem; margin-bottom: .5rem;
+}
+.item.danger { border-left-color: #ef4444; }
+.item.purple { border-left-color: #8b5cf6; }
+.item-title { color: #e8eef7; font-weight: 600; font-size: .85rem; }
+.item-sub { color: #94a3b8; font-size: .7rem; margin-top: .15rem; }
+.item-note { color: #cbd5e1; font-size: .72rem; margin-top: .3rem; font-style: italic; }
+.item-actions { display: flex; justify-content: flex-end; margin-top: .4rem; }
+.item-actions button {
+  border: none; border-radius: 20px; padding: .25rem .7rem; font-size: .72rem; font-weight: 600;
+  cursor: pointer; background: #22c55e; color: #fff;
+}
+.item-actions button:hover { filter: brightness(.92); }
+
+.field { margin-bottom: .55rem; -webkit-app-region: no-drag; }
+.field label { display: block; color: #94a3b8; font-size: .7rem; margin-bottom: .2rem; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: .4rem .5rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+  background: rgba(255,255,255,.06); color: #e8eef7; font-size: .78rem; font-family: inherit;
+}
+.field textarea { resize: vertical; }
+.ov-btn-row { display: flex; gap: .4rem; }
+.ov-btn {
+  flex: 1; border: none; border-radius: 8px; padding: .5rem .3rem; font-size: .75rem; font-weight: 700;
+  cursor: pointer; color: #fff;
+}
+.ov-btn.warning { background: #f59e0b; }
+.ov-btn.danger { background: #ef4444; }
+.ov-btn.primary { background: #06b6d4; }
+.ov-btn:hover { filter: brightness(.93); }
+.ov-role-buttons { display: flex; flex-direction: column; gap: .5rem; }
+.ov-role-buttons .ov-btn { text-align: left; padding: .6rem .8rem; }
+
+.urgent-banner {
+  text-align: center; padding: 1rem .5rem .3rem;
+  animation: urgent-pulse-bg 1s ease-in-out infinite;
+  border-radius: 12px;
+}
+@keyframes urgent-pulse-bg {
+  0%, 100% { background-color: rgba(239,68,68,.12); }
+  50% { background-color: rgba(239,68,68,.4); }
+}
+.urgent-icon { font-size: 2rem; margin-bottom: .3rem; }
+.urgent-from { color: #94a3b8; font-size: .72rem; margin-bottom: .4rem; }
+.urgent-text { color: #fff; font-weight: 700; font-size: .92rem; margin-bottom: .8rem; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <div class="collapsed-icon" id="collapsedIcon">✓</div>
+  <div class="header">
+    <div>
+      <div class="header-title" id="headerTitle">SektorLink</div>
+      <div class="header-role" id="headerRole"></div>
+    </div>
+    <div class="header-btns">
+      <button id="collapseBtn" title="Sakrij">−</button>
+      <button id="closeBtn" title="Zatvori">✕</button>
+    </div>
+  </div>
+  <div class="tabs-bar hidden" id="tabsBar">
+    <button class="tab-btn active" data-tab="list">Lista</button>
+    <button class="tab-btn" data-tab="new">Novi zadatak</button>
+    <button class="tab-btn" data-tab="messages">Hitna poruka</button>
+    <button class="tab-btn" data-tab="settings" title="Podešavanja">⚙️</button>
+  </div>
+  <div class="content" id="content">Učitavanje...</div>
+
+<script>
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+function formatTime(ts) {
+  return new Date(ts).toLocaleString('sr-RS', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+function patientLabel(p) {
+  if (p.patientNumber && p.patientName) return `${esc(p.patientNumber)} — ${esc(p.patientName)}`;
+  return esc(p.patientNumber || p.patientName || '');
+}
+
+function reasonLabel(r) {
+  if (r === 'ponavljanje') return 'Ponavljanje';
+  if (r === 'nije-uradjeno') return 'Nije urađeno';
+  if (r === 'spreman-za-pregled') return 'Spreman za pregled';
+  return r || '';
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+const content = document.getElementById('content');
+const collapsedIcon = document.getElementById('collapsedIcon');
+const tabsBar = document.getElementById('tabsBar');
+const body = document.body;
+
+let myCode = null;
+let myRole = null;
+let sectors = {};
+let patients = {};
+let messages = {};
+let ws = null;
+let reconnectTimer = null;
+let overlayTab = 'list';
+
+let currentScreen = 'connect'; // 'connect' | 'role' | 'app'
+let wsCode = '';
+let hasConnectedOnce = false;
+
+const tabLoadTs = Date.now();
+const alertedMessageIds = new Set();
+let urgentQueue = [];
+let urgentShowing = false;
+let urgentBeepInterval = null;
+let previousTab = 'list';
+
+function showConnectScreen(errorMsg) {
+  currentScreen = 'connect';
+  tabsBar.classList.add('hidden');
+  document.getElementById('headerTitle').textContent = 'SektorLink';
+  document.getElementById('headerRole').textContent = '';
+  collapsedIcon.textContent = '…';
+  renderConnectScreen(errorMsg);
+}
+
+function renderConnectScreen(errorMsg) {
+  const errorHtml = errorMsg ? `<div style="color:#ef4444;font-size:.78rem;padding:.2rem 0 .5rem">${esc(errorMsg)}</div>` : '';
+  content.innerHTML = `
+    <form id="ov-connect-form">
+      <div class="field"><label>Pristupni kod</label><input id="ov-connect-code" autocomplete="off" required></div>
+      ${errorHtml}
+      <button type="submit" class="ov-btn primary" style="width:100%">Poveži se</button>
+    </form>`;
+  document.getElementById('ov-connect-form').onsubmit = ev => {
+    ev.preventDefault();
+    const code = document.getElementById('ov-connect-code').value.trim();
+    if (code) connectWs(code);
+  };
+}
+
+function showRoleScreen() {
+  currentScreen = 'role';
+  tabsBar.classList.add('hidden');
+  document.getElementById('headerTitle').textContent = 'SektorLink';
+  document.getElementById('headerRole').textContent = '';
+  renderRoleScreen();
+}
+
+function renderRoleScreen() {
+  let html = `<div class="ov-role-buttons"><button class="ov-btn primary" id="ov-role-admin">👑 Administrator</button>`;
+  const sectorList = Object.values(sectors).sort((a, b) => (a.order || 0) - (b.order || 0));
+  if (sectorList.length) {
+    sectorList.forEach(s => {
+      html += `<button class="ov-btn" data-sector-id="${s.id}">🧪 ${esc(s.name)}</button>`;
+    });
+  } else {
+    html += `<div class="hint">Nema još definisanih sektora. Administrator prvo treba da ih doda (⚙️ tab).</div>`;
+  }
+  html += `</div>`;
+  content.innerHTML = html;
+  document.getElementById('ov-role-admin').onclick = () => chooseRole({ type: 'admin' });
+  content.querySelectorAll('[data-sector-id]').forEach(btn => {
+    btn.onclick = () => chooseRole({ type: 'sector', sectorId: btn.dataset.sectorId });
+  });
+}
+
+function showAppScreen() {
+  currentScreen = 'app';
+  tabsBar.classList.remove('hidden');
+  overlayTab = 'list';
+  document.querySelectorAll('#tabsBar .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'list'));
+  render();
+}
+
+function chooseRole(role) {
+  myRole = role;
+  localStorage.setItem('sf_role', JSON.stringify(role));
+  showAppScreen();
+}
+
+function changeRole() {
+  myRole = null;
+  localStorage.removeItem('sf_role');
+  showRoleScreen();
+}
+
+function changeCode() {
+  const oldCode = wsCode;
+  disconnect();
+  hasConnectedOnce = false;
+  wsCode = '';
+  showConnectScreen();
+  document.getElementById('ov-connect-code').value = oldCode || '';
+}
+
+function navigateAfterConnect() {
+  const savedRole = JSON.parse(localStorage.getItem('sf_role') || 'null');
+  if (savedRole && (savedRole.type === 'admin' || sectors[savedRole.sectorId])) {
+    myRole = savedRole;
+    showAppScreen();
+  } else {
+    showRoleScreen();
+  }
+}
+
+function sectorName(id) { return (sectors[id] && sectors[id].name) || 'Nepoznat sektor'; }
+
+function myQueue() {
+  if (myRole.type === 'admin') {
+    return Object.values(patients).filter(p =>
+      (p.direction === 'toSector' && (p.status === 'pending' || p.status === 'done')) ||
+      (p.direction === 'toAdmin' && p.status === 'pending'));
+  }
+  return Object.values(patients).filter(p => p.direction === 'toSector' && p.status === 'pending');
+}
+
+function actionFor(p) {
+  if (myRole.type !== 'admin') return { label: 'Odrađeno ✓', next: 'done' };
+  if (p.direction === 'toSector' && p.status === 'pending') return { label: '🗑️ Obriši', next: 'delete' };
+  return { label: 'Zatvori', next: 'closed' };
+}
+
+/* ---------- Hitne poruke — velik, upadljiv banner preko overlay-a ---------- */
+function isMessageForMe(m) {
+  if (!myRole) return false;
+  if (myRole.type === 'admin') return m.to === 'all' || m.to === 'admin';
+  return m.to === 'all' || m.to === myRole.sectorId;
+}
+
+function processUrgentMessages() {
+  const relevant = Object.values(messages).filter(isMessageForMe).sort((a, b) => a.ts - b.ts);
+  relevant.forEach(m => {
+    if (alertedMessageIds.has(m.id)) return;
+    alertedMessageIds.add(m.id);
+    if (m.ts > tabLoadTs) urgentQueue.push(m);
+  });
+  if (!urgentShowing) showNextUrgentOverlay();
+}
+
+function showNextUrgentOverlay() {
+  clearInterval(urgentBeepInterval);
+  if (!urgentQueue.length) {
+    urgentShowing = false;
+    return;
+  }
+  if (!urgentShowing) previousTab = overlayTab;
+  urgentShowing = true;
+
+  // Force the overlay open and to the front — a routine queue update never
+  // does this, but a hitna poruka is exactly the case worth interrupting for.
+  if (body.classList.contains('collapsed')) {
+    body.classList.remove('collapsed');
+    if (window.electronOverlay) window.electronOverlay.setCollapsed(false);
+  }
+  if (window.electronOverlay) window.electronOverlay.flashUrgent();
+
+  const m = urgentQueue.shift();
+  tabsBar.classList.add('hidden');
+  content.innerHTML = `
+    <div class="urgent-banner">
+      <div class="urgent-icon">🚨</div>
+      <div class="urgent-from">${esc(m.from)} • ${formatTime(m.ts)}</div>
+      <div class="urgent-text">${esc(m.text)}</div>
+      <button id="urgentOkBtn" class="ov-btn danger" style="width:100%">U redu</button>
+    </div>`;
+  document.getElementById('urgentOkBtn').onclick = () => {
+    showNextUrgentOverlay();
+    if (!urgentShowing) { tabsBar.classList.remove('hidden'); setOverlayTab(previousTab); }
+  };
+  playBeep();
+  urgentBeepInterval = setInterval(() => { if (urgentShowing) playBeep(); }, 4000);
+}
+
+function playBeep() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const beep = (freq, delay) => setTimeout(() => {
+      const ctx = new Ctx();
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.5);
+    }, delay);
+    beep(880, 0);
+    beep(1046, 260);
+  } catch (e) { console.error('Zvuk nije uspeo:', e); }
+}
+
+/* ---------- Render dispatch ---------- */
+const NEW_TASK_FIELD_IDS = ['ov-number', 'ov-name', 'ov-note', 'ov-sector'];
+const MSG_FIELD_IDS = ['ov-msg-to', 'ov-msg-text'];
+
+function render() {
+  if (currentScreen === 'connect') return; // renderConnectScreen() already painted #content
+  if (currentScreen === 'role') { renderRoleScreen(); return; }
+  document.getElementById('headerRole').textContent = myRole.type === 'admin' ? 'Administrator' : sectorName(myRole.sectorId);
+  const list = myQueue();
+  collapsedIcon.textContent = list.length ? list.length : '✓';
+  if (urgentShowing) return; // urgent banner owns #content until dismissed
+  if (overlayTab === 'list') renderListTab(list);
+  else if (overlayTab === 'new') renderNewTaskTab();
+  else if (overlayTab === 'messages') renderMessagesTab();
+  else if (overlayTab === 'settings') renderSettingsTab();
+}
+
+function onStateChanged() {
+  if (currentScreen === 'role') renderRoleScreen();
+  else if (currentScreen === 'app') render();
+}
+
+function renderMessagesTab() {
+  const preserved = {};
+  MSG_FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el) preserved[id] = el.value; });
+
+  const toOptions = myRole.type === 'admin'
+    ? Object.values(sectors).sort((a, b) => (a.order || 0) - (b.order || 0)).map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
+    : '<option value="admin">Administrator</option>';
+  const list = Object.values(messages).filter(isMessageForMe).sort((a, b) => b.ts - a.ts).slice(0, 30);
+  const listHtml = list.length ? list.map(m => `
+    <div class="item">
+      <div class="item-title">${esc(m.from)}</div>
+      <div class="item-sub">${formatTime(m.ts)}</div>
+      <div class="item-note">${esc(m.text)}</div>
+      <div class="item-actions"><button data-id="${m.id}" class="msg-delete-btn" style="background:transparent">🗑️</button></div>
+    </div>`).join('') : '<div class="empty">Nema poruka.</div>';
+
+  content.innerHTML = `
+    <div class="field"><label>Prima</label><select id="ov-msg-to"><option value="all">Svi</option>${toOptions}</select></div>
+    <div class="field"><label>Poruka</label><textarea id="ov-msg-text" rows="2" placeholder="Unesite hitnu poruku..."></textarea></div>
+    <button id="ov-msg-send" class="ov-btn danger" style="width:100%;margin-bottom:.7rem">📢 Pošalji hitno</button>
+    ${listHtml}`;
+  document.getElementById('ov-msg-send').onclick = submitUrgentMessage;
+  content.querySelectorAll('.msg-delete-btn').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      delete messages[id];
+      wsSend({ type: 'remove', collection: 'messages', id });
+      renderMessagesTab();
+    };
+  });
+
+  MSG_FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el && preserved[id]) el.value = preserved[id]; });
+}
+
+function submitUrgentMessage() {
+  const textEl = document.getElementById('ov-msg-text');
+  const text = textEl.value.trim();
+  const to = document.getElementById('ov-msg-to').value;
+  if (!text) return;
+  const id = uid();
+  const from = myRole.type === 'admin' ? 'Administrator' : sectorName(myRole.sectorId);
+  const data = { id, text, from, to, ts: Date.now() };
+  alertedMessageIds.add(id);
+  messages[id] = data;
+  wsSend({ type: 'mutate', collection: 'messages', id, data });
+  textEl.value = '';
+  render();
+}
+
+function renderSettingsTab() {
+  let html = '';
+  if (myRole.type === 'admin') {
+    html += `
+      <div class="item">
+        <div class="item-title">⚙️ Sektori</div>
+        <div id="ovSectorsList" style="margin-top:.5rem"></div>
+        <div class="ov-btn-row" style="margin-top:.4rem">
+          <input id="ovNewSectorName" placeholder="Naziv novog sektora..." style="flex:2;padding:.4rem .5rem;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.06);color:#e8eef7;font-size:.78rem">
+          <button id="ovAddSectorBtn" class="ov-btn primary">Dodaj</button>
+        </div>
+      </div>`;
+  }
+  html += `
+    <div class="item">
+      <div class="item-title">Nalog</div>
+      <div class="ov-btn-row" style="margin-top:.4rem">
+        <button id="ovChangeCodeBtn" class="ov-btn">Promeni kod</button>
+        <button id="ovChangeRoleBtn" class="ov-btn">Promeni ulogu</button>
+      </div>
+    </div>`;
+  content.innerHTML = html;
+  if (myRole.type === 'admin') {
+    renderSectorsList();
+    document.getElementById('ovAddSectorBtn').onclick = addSector;
+    document.getElementById('ovNewSectorName').onkeydown = e => { if (e.key === 'Enter') addSector(); };
+  }
+  document.getElementById('ovChangeCodeBtn').onclick = changeCode;
+  document.getElementById('ovChangeRoleBtn').onclick = changeRole;
+}
+
+function renderSectorsList() {
+  const box = document.getElementById('ovSectorsList');
+  if (!box) return;
+  const list = Object.values(sectors).sort((a, b) => (a.order || 0) - (b.order || 0));
+  box.innerHTML = list.length ? list.map(s => `
+    <div class="ov-btn-row" style="margin-bottom:.3rem">
+      <input value="${esc(s.name)}" data-sector-id="${s.id}" class="ov-sector-rename" style="flex:1;padding:.4rem .5rem;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.06);color:#e8eef7;font-size:.78rem">
+      <button data-sector-id="${s.id}" class="ov-btn danger ov-sector-delete" style="flex:0 0 auto;padding:.4rem .6rem" title="Obriši">🗑️</button>
+    </div>`).join('') : '<div class="empty">Nema sektora — dodajte prvi ispod.</div>';
+  box.querySelectorAll('.ov-sector-rename').forEach(input => {
+    input.onchange = () => renameSector(input.dataset.sectorId, input.value);
+  });
+  box.querySelectorAll('.ov-sector-delete').forEach(btn => {
+    btn.onclick = () => deleteSectorConfirm(btn.dataset.sectorId);
+  });
+}
+
+function renameSector(id, newName) {
+  newName = newName.trim();
+  if (!newName || !sectors[id]) return;
+  const data = { ...sectors[id], name: newName };
+  sectors[id] = data;
+  wsSend({ type: 'mutate', collection: 'sectors', id, data });
+  renderSectorsList();
+}
+
+function deleteSectorConfirm(id) {
+  const hasActive = Object.values(patients).some(p => p.sectorId === id && p.status !== 'closed');
+  if (hasActive && !confirm('Ovaj sektor ima aktivne pacijente. Obrisati ga ipak?')) return;
+  if (!hasActive && !confirm('Obrisati ovaj sektor?')) return;
+  delete sectors[id];
+  wsSend({ type: 'remove', collection: 'sectors', id });
+  renderSectorsList();
+}
+
+function addSector() {
+  const input = document.getElementById('ovNewSectorName');
+  const name = input.value.trim();
+  if (!name) return;
+  const id = uid();
+  const data = { id, name, order: Object.keys(sectors).length };
+  sectors[id] = data;
+  wsSend({ type: 'mutate', collection: 'sectors', id, data });
+  input.value = '';
+  renderSectorsList();
+}
+
+function renderListTab(list) {
+  list = (list || myQueue()).slice().sort((a, b) => a.createdAt - b.createdAt);
+  if (!list.length) { content.innerHTML = '<div class="empty">Nema stavki na čekanju.</div>'; return; }
+  content.innerHTML = list.map(p => {
+    const cls = p.reason === 'nije-uradjeno' ? 'danger' : (p.reason === 'spreman-za-pregled' ? 'purple' : '');
+    const act = actionFor(p);
+    const typeLabel = p.direction === 'toSector' ? `→ ${esc(sectorName(p.sectorId))}` : `${esc(sectorName(p.sectorId))} → Admin`;
+    return `
+      <div class="item ${cls}">
+        <div class="item-title">${patientLabel(p)}</div>
+        <div class="item-sub">${reasonLabel(p.reason)} · ${typeLabel} · ${formatTime(p.updatedAt)}</div>
+        ${p.note ? `<div class="item-note">${esc(p.note)}</div>` : ''}
+        <div class="item-actions"><button data-id="${p.id}" data-next="${act.next}">${act.label}</button></div>
+      </div>`;
+  }).join('');
+  content.querySelectorAll('.item-actions button').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const p = patients[id]; if (!p) return;
+      if (btn.dataset.next === 'delete') {
+        delete patients[id];
+        wsSend({ type: 'remove', collection: 'patients', id });
+        render();
+        return;
+      }
+      const data = { ...p, status: btn.dataset.next, updatedAt: Date.now() };
+      patients[id] = data;
+      wsSend({ type: 'mutate', collection: 'patients', id, data });
+      render();
+    };
+  });
+}
+
+// Rebuilds the "Novi zadatak" form. Preserves whatever the user already typed
+// across a rebuild — a sectors-list update (rare) would otherwise wipe an
+// in-progress entry, same class of bug fixed on the main screen.
+function renderNewTaskTab() {
+  const preserved = {};
+  NEW_TASK_FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el) preserved[id] = el.value; });
+
+  if (myRole.type === 'admin') {
+    const sectorOptions = Object.values(sectors).sort((a, b) => (a.order || 0) - (b.order || 0))
+      .map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    content.innerHTML = `
+      <div class="field"><label>Broj pacijenta</label><input id="ov-number"></div>
+      <div class="field"><label>Ime i prezime</label><input id="ov-name"></div>
+      <div class="field"><label>Sektor</label><select id="ov-sector">${sectorOptions || '<option value="">Nema sektora</option>'}</select></div>
+      <div class="field"><label>Napomena (opciono)</label><textarea id="ov-note" rows="2"></textarea></div>
+      <div class="ov-btn-row">
+        <button id="ov-btn-repeat" class="ov-btn warning">🔁 Ponavljanje</button>
+        <button id="ov-btn-notdone" class="ov-btn danger">❌ Nije urađeno</button>
+      </div>`;
+    document.getElementById('ov-btn-repeat').onclick = () => submitAdminTask('ponavljanje');
+    document.getElementById('ov-btn-notdone').onclick = () => submitAdminTask('nije-uradjeno');
+  } else {
+    content.innerHTML = `
+      <div class="field"><label>Broj pacijenta</label><input id="ov-number"></div>
+      <div class="field"><label>Ime i prezime</label><input id="ov-name"></div>
+      <div class="field"><label>Napomena (opciono)</label><textarea id="ov-note" rows="2"></textarea></div>
+      <button id="ov-btn-send" class="ov-btn primary" style="width:100%">Pošalji adminu</button>`;
+    document.getElementById('ov-btn-send').onclick = submitSectorTask;
+  }
+
+  NEW_TASK_FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el && preserved[id]) el.value = preserved[id]; });
+}
+
+function submitAdminTask(reason) {
+  const numberEl = document.getElementById('ov-number'), nameEl = document.getElementById('ov-name'), noteEl = document.getElementById('ov-note');
+  const number = numberEl.value.trim();
+  const name = nameEl.value.trim();
+  const sectorId = document.getElementById('ov-sector').value;
+  const note = noteEl.value.trim();
+  if ((!number && !name) || !sectorId) return;
+  const id = uid();
+  const data = {
+    id, patientNumber: number, patientName: name, sectorId, reason, note,
+    direction: 'toSector', status: 'pending', createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin'
+  };
+  patients[id] = data;
+  wsSend({ type: 'mutate', collection: 'patients', id, data });
+  numberEl.value = ''; nameEl.value = ''; noteEl.value = '';
+  numberEl.focus();
+}
+
+function submitSectorTask() {
+  const numberEl = document.getElementById('ov-number'), nameEl = document.getElementById('ov-name'), noteEl = document.getElementById('ov-note');
+  const number = numberEl.value.trim();
+  const name = nameEl.value.trim();
+  const note = noteEl.value.trim();
+  if (!number && !name) return;
+  const id = uid();
+  const data = {
+    id, patientNumber: number, patientName: name, sectorId: myRole.sectorId, reason: 'spreman-za-pregled', note,
+    direction: 'toAdmin', status: 'pending', createdAt: Date.now(), updatedAt: Date.now(), createdBy: myRole.sectorId
+  };
+  patients[id] = data;
+  wsSend({ type: 'mutate', collection: 'patients', id, data });
+  numberEl.value = ''; nameEl.value = ''; noteEl.value = '';
+  numberEl.focus();
+}
+
+function setOverlayTab(tab) {
+  overlayTab = tab;
+  document.querySelectorAll('#tabsBar .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  render();
+}
+document.querySelectorAll('#tabsBar .tab-btn').forEach(btn => { btn.onclick = () => setOverlayTab(btn.dataset.tab); });
+
+/* ---------- WebSocket ---------- */
+function wsUrlForCode(code) {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return proto + '//' + location.host + '/?code=' + encodeURIComponent(code);
+}
+function wsSend(msg) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg)); }
+
+function disconnect() {
+  clearTimeout(reconnectTimer);
+  if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
+}
+
+function handleWsMessage(raw) {
+  let msg; try { msg = JSON.parse(raw); } catch (e) { return; }
+  if (msg.type === 'init') {
+    hasConnectedOnce = true;
+    myCode = wsCode;
+    localStorage.setItem('sf_code', wsCode);
+    sectors = msg.sectors || {}; patients = msg.patients || {}; messages = msg.messages || {};
+    tabsBar.classList.remove('hidden');
+    if (currentScreen === 'connect') navigateAfterConnect();
+    else onStateChanged();
+    processUrgentMessages();
+    return;
+  }
+  if (msg.type === 'update') {
+    if (msg.collection === 'sectors') sectors[msg.id] = msg.data;
+    else if (msg.collection === 'patients') patients[msg.id] = msg.data;
+    else if (msg.collection === 'messages') messages[msg.id] = msg.data;
+  } else if (msg.type === 'remove') {
+    if (msg.collection === 'sectors') delete sectors[msg.id];
+    else if (msg.collection === 'patients') delete patients[msg.id];
+    else if (msg.collection === 'messages') delete messages[msg.id];
+  }
+  onStateChanged();
+  if (msg.collection === 'messages') processUrgentMessages();
+}
+
+// Entry point for the connect screen / "Promeni kod". Distinguishes "never
+// connected" (show an inline error, incl. wrong-code close code 4001) from
+// "was connected, just dropped" (silently retry).
+function connectWs(code) {
+  wsCode = code;
+  clearTimeout(reconnectTimer);
+  disconnect();
+  ws = new WebSocket(wsUrlForCode(code));
+  ws.onclose = ev => {
+    if (!hasConnectedOnce) {
+      const msg = ev.code === 4001 ? 'Pogrešan pristupni kod.' : 'Ne mogu da se povežem na server. Proveri da li je server pokrenut i da li si na istoj mreži.';
+      showConnectScreen(msg);
+      if (ev.code === 4001) return;
+    }
+    reconnectTimer = setTimeout(() => connectWs(wsCode), 3000);
+  };
+  ws.onmessage = ev => handleWsMessage(ev.data);
+}
+
+// Re-checks localStorage for pristupni kod. Runs on load AND whenever another
+// same-origin tab/window writes to localStorage — a 'storage' event is how
+// the overlay notices a code change made elsewhere without needing a restart.
+function tryConnect() {
+  const code = localStorage.getItem('sf_code');
+  if (!code) {
+    disconnect();
+    sectors = {}; patients = {}; messages = {};
+    showConnectScreen();
+    return;
+  }
+  if (code === wsCode && hasConnectedOnce) return; // already connected with this code
+  connectWs(code);
+}
+
+window.addEventListener('storage', e => {
+  if (e.key === 'sf_code' || e.key === 'sf_role') tryConnect();
+});
+tryConnect();
+
+function toggleCollapse(collapse) {
+  body.classList.toggle('collapsed', collapse);
+  if (window.electronOverlay) window.electronOverlay.setCollapsed(collapse);
+}
+document.getElementById('collapseBtn').onclick = () => toggleCollapse(true);
+document.getElementById('collapsedIcon').onclick = () => toggleCollapse(false);
+document.getElementById('closeBtn').onclick = () => {
+  if (window.electronOverlay) window.electronOverlay.hide();
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "name": "sektorlink-server-app",
+  "version": "1.0.0",
+  "description": "SektorLink server — Electron shell (tray + status prozor) oko postojeceg server.js",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.sektorlink.server",
+    "productName": "SektorLink Server",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "status.html",
+      "build/icon.ico"
+    ],
+    "extraResources": [
+      { "from": "../server.js", "to": "server.js" },
+      { "from": "../public", "to": "public" },
+      { "from": "../node_modules", "to": "node_modules" }
+    ],
+    "directories": {
+      "output": "dist-installer"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "SektorLink-Server-Setup-${version}.exe"
+    }
+  }
+}

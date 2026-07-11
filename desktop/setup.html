@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<title>SektorLink — podešavanje</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(6,182,212,.25), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(139,92,246,.22), transparent 45%),
+    #060a14;
+  color: #e8eef7;
+  height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.card {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px; padding: 2rem 1.8rem; width: 100%; max-width: 380px; text-align: center;
+}
+h1 { font-size: 1.4rem; margin-bottom: .3rem; }
+p { color: #94a3b8; font-size: .85rem; margin-bottom: 1.4rem; line-height: 1.5; }
+label { display: block; text-align: left; font-size: .8rem; color: #94a3b8; margin-bottom: .35rem; }
+input {
+  width: 100%; padding: .65rem .8rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.06); color: #e8eef7; font-size: .95rem; margin-bottom: .4rem;
+}
+input::placeholder { color: #56637a; }
+.hint { text-align: left; font-size: .72rem; color: #56637a; margin-bottom: 1.1rem; }
+.error { text-align: left; font-size: .78rem; color: #ef4444; margin-bottom: .8rem; display: none; }
+button {
+  width: 100%; padding: .8rem; border: none; border-radius: 10px; background: #06b6d4; color: #fff;
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+}
+button:hover { background: #0891b2; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🧪 SektorLink</h1>
+    <p>Prvi put se pokreće na ovom računaru. Unesi adresu servera da se poveže.</p>
+    <label>Adresa servera</label>
+    <input id="serverInput" placeholder="npr. 192.168.1.21:3131" autofocus>
+    <div class="hint">Adresu dobijaš od osobe koja je podesila SektorLink server.</div>
+    <div id="error" class="error"></div>
+    <button id="saveBtn">Sačuvaj i pokreni</button>
+  </div>
+<script>
+function normalize(v) {
+  v = v.trim();
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) v = 'http://' + v;
+  return v.replace(/\/$/, '');
+}
+document.getElementById('saveBtn').onclick = save;
+document.getElementById('serverInput').addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+function save() {
+  const raw = document.getElementById('serverInput').value;
+  const url = normalize(raw);
+  const errEl = document.getElementById('error');
+  if (!url) { errEl.textContent = 'Unesi adresu servera.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  window.setupAPI.saveServerConfig(url);
+}
+</script>
+</body>
+</html>

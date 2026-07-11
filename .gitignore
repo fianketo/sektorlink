@@ -1,3 +1,6 @@
 node_modules/
 data/
 config.json
+cloudflared.exe
+cloudflared.log
+server.log

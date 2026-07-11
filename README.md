@@ -28,6 +28,12 @@ kod** — nema pravih naloga/lozinki po osobi.
 
 ## Podešavanje (jednom, na računaru koji će biti server)
 
+**Najlakši način:** instaliraj `server-app\dist-installer\SektorLink-Server-Setup-<verzija>.exe` —
+jedan fajl, dupli klik, gotovo (ne treba Node.js, ne treba kopiranje foldera). Detalji i kako se
+pravi taj instaler: pogledaj **`Kako instalirati.txt`**.
+
+Ručni način (bez instalera, npr. ako želiš da vidiš/menjaš kod direktno na server-računaru):
+
 1. Instaliraj [Node.js](https://nodejs.org) (LTS verzija) — obično dvoklik na instaler, Next-Next-Finish.
    Ovo je jedini korak koji fajl ispod ne može da uradi umesto tebe.
 2. Iskopiraj ceo `sektorlink` folder na taj računar (ili `git clone` ovaj repo).
@@ -54,6 +60,14 @@ napravljeno.
    ```
    (zameni IP-jem sa koraka 1). Unesi pristupni kod iz `config.json` — pamti se, ne pita se
    ponovo na tom računaru dok se ne klikne "Promeni kod".
+
+## Desktop overlay aplikacija (opciono, umesto browsera)
+
+Za računare gde je zgodnije da SektorLink stoji kao mala, uvek-na-vrhu traka pored ostalih
+programa (umesto otvorenog browser taba), postoji gotov instaler — jedan `.exe` fajl, bez
+potrebe za Node.js na tom računaru. Pogledaj **`Kako instalirati.txt`** za korak-po-korak
+uputstvo (ukratko: prekopiraj `desktop\dist-installer\SektorLink-Setup-<verzija>.exe` na drugi
+računar, dupli klik, unesi adresu servera, gotovo).
 
 ## Pristup za par računara van lokalne mreže (Cloudflare Tunnel)
 

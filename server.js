@@ -4,7 +4,11 @@ const http = require('http');
 const express = require('express');
 const WebSocket = require('ws');
 
-const CONFIG_PATH = path.join(__dirname, 'config.json');
+// Overridable via env vars so the Electron server-app wrapper (server-app/main.js)
+// can point these at a writable per-user data folder instead of __dirname, which
+// sits read-only inside app.asar once packaged. Plain "node server.js" usage is
+// unaffected since these env vars are unset in that case.
+const CONFIG_PATH = process.env.SEKTORLINK_CONFIG_PATH || path.join(__dirname, 'config.json');
 if (!fs.existsSync(CONFIG_PATH)) {
   console.error('Nedostaje config.json. Kopiraj config.example.json u config.json i upiši svoj pristupni kod.');
   process.exit(1);
@@ -12,7 +16,7 @@ if (!fs.existsSync(CONFIG_PATH)) {
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 const PORT = config.port || 3131;
 
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.SEKTORLINK_DATA_DIR || path.join(__dirname, 'data');
 const DB_PATH = path.join(DATA_DIR, 'db.json');
 const COLLECTIONS = ['sectors', 'patients', 'messages'];
 const UNSAFE_KEYS = ['__proto__', 'constructor', 'prototype'];
@@ -38,10 +42,25 @@ function saveDB() {
 saveDB();
 
 const app = express();
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(process.env.SEKTORLINK_PUBLIC_DIR || path.join(__dirname, 'public')));
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+
+// ws re-emits the underlying http server's 'error' on the WebSocket.Server
+// instance (wss), not on `server` — without a listener here that re-emit
+// throws with no visible message (e.g. a silent-looking crash on port
+// conflicts). Listening on both covers ws's re-emit and any error the http
+// server raises before ws attaches its own listener.
+function handleServerError(err) {
+  const msg = err.code === 'EADDRINUSE'
+    ? `Port ${PORT} je već zauzet — zatvori drugi program koji ga koristi ili promeni "port" u config.json.`
+    : `Greška servera: ${err.message}`;
+  console.error(msg);
+  process.exit(1);
+}
+wss.on('error', handleServerError);
+server.on('error', handleServerError);
 
 function broadcast(msg) {
   const raw = JSON.stringify(msg);
@@ -50,14 +69,7 @@ function broadcast(msg) {
   });
 }
 
-wss.on('connection', (ws, req) => {
-  const url = new URL(req.url, 'http://localhost');
-  const code = url.searchParams.get('code');
-  if (code !== config.accessCode) {
-    ws.close(4001, 'bad_code');
-    return;
-  }
-
+wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'init', sectors: db.sectors, patients: db.patients, messages: db.messages }));
 
   ws.on('message', raw => {

@@ -1,0 +1,41 @@
+{
+  "name": "sektorlink-desktop",
+  "version": "1.0.0",
+  "description": "SektorLink desktop overlay (Electron shell oko postojeceg servera)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.sektorlink.desktop",
+    "productName": "SektorLink",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "setup.html",
+      "setup-preload.js",
+      "config.example.json",
+      "!config.json"
+    ],
+    "directories": {
+      "output": "dist-installer"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "SektorLink-Setup-${version}.exe"
+    }
+  }
+}
